@@ -22,26 +22,27 @@
 
 #include "common.h"
 
-// デバッグ用メッセージ出力
+// Debug message
 #ifdef D_DBG_PRINT_ENABLE
 #define DBG_PRINT(...)	printf("%s(%d): ", __func__, __LINE__); printf(__VA_ARGS__)
 #else
 #define DBG_PRINT(...)
 #endif
 
-// エラー用メッセージ出力
+// Err message
 #ifdef D_DBG_ERR_ENABLE
 #define DBG_ERR(...)	fprintf(stderr, "[ERR] %s(%d): ", __func__, __LINE__); fprintf(stderr, __VA_ARGS__)
 #else
 #define DBG_ERR(...)
 #endif
 
-#define D_SPI_CMD_READ	(0x00)	// frizz SPI通信用コマンド 読み出し
-#define D_SPI_CMD_WRITE	(0x80)	// frizz SPI通信用コマンド 書き込み
+// command identifier (for frizz SPI)
+#define D_SPI_CMD_READ	(0x00)	// read
+#define D_SPI_CMD_WRITE	(0x80)	// write
 
-#define D_MAX_TRANSFER_SIZE	(256) // 最大転送データサイズ
+#define D_MAX_TRANSFER_SIZE	(256) // maximum size
 
-//#define D_PRINT_PACKET	// この定義を有効にすると送受信時のパケット内容を画面出力する
+//#define D_PRINT_PACKET	// print packge content
 
 static int spi_fd = 0;
 static uint8_t mode;
@@ -118,14 +119,14 @@ end:
 }
 
 /**
-  * SPIデバイスをオープンし、使用できるようにする
+  * Initialize SPI
   */
 int spi_open( const char* serial_dev_path )
 {
 	int ret = 0;
 	int result = D_RESULT_ERROR;
 
-	// open済みの場合は成功として返す
+	// Return immidiatly if already opened  
 	if( spi_fd != 0 ) {
 		return D_RESULT_SUCCESS;
 	}
@@ -209,7 +210,7 @@ end:
 }
 
 /*!
- * SPI termination processing
+ * Release SPI
  *
  * @param[in]
  * @return
@@ -223,10 +224,10 @@ void spi_close( void )
 }
 
 /*!
- * SPI 32bit data of writing processing
+ * Write data to register by spi
  *
  * @param[in] register address
- * @param[in] writing data
+ * @param[in] writting data
  * @return 0=sucess, otherwise 0=fail
  */
 int spi_write_reg_32( unsigned int reg_addr, unsigned int data )
@@ -239,7 +240,7 @@ int spi_write_reg_32( unsigned int reg_addr, unsigned int data )
 
 	p = ( uint8_t* )&data;
 
-	tx[0] = D_SPI_CMD_WRITE | ( 0xFF & ( reg_addr >> 8 ) );		// 書き込みコマンド
+	tx[0] = D_SPI_CMD_WRITE | ( 0xFF & ( reg_addr >> 8 ) );	// command for writting
 	tx[1] = 0xFF & reg_addr;
 	tx[2] = 0xFF & *( p + 3 );
 	tx[3] = 0xFF & *( p + 2 );
@@ -249,7 +250,7 @@ int spi_write_reg_32( unsigned int reg_addr, unsigned int data )
 }
 
 /*!
- * SPI 32bit data of reading processing
+ * read data from register by spi
  *
  * @param[in] register address
  * @param[out] reading data
@@ -268,12 +269,12 @@ int spi_read_reg_32( unsigned int reg_addr, unsigned int *data )
 
 	memset( tx, 0, sizeof( tx ) );
 	memset( rx, 0, sizeof( rx ) );
-	tx[0] = D_SPI_CMD_READ | ( 0xFF & ( reg_addr >> 8 ) );		// 読み出しコマンド
-	tx[1] = 0xFF & reg_addr;	// アドレス
-	tx[2] = 0;	// data部
-	tx[3] = 0;	// data部
-	tx[4] = 0;	// data部
-	tx[5] = 0;	// data部
+	tx[0] = D_SPI_CMD_READ | ( 0xFF & ( reg_addr >> 8 ) );	// command for reading
+	tx[1] = 0xFF & reg_addr;	// address
+	tx[2] = 0;	// data part
+	tx[3] = 0;	// data part
+	tx[4] = 0;	// data part
+	tx[5] = 0;	// data part
 	ret = spi_transfer( tx, rx, sizeof( tx ) );
 	if( ret != D_RESULT_SUCCESS ) {
 		*data = 0;
@@ -290,10 +291,10 @@ int spi_read_reg_32( unsigned int reg_addr, unsigned int *data )
 }
 
 /**
- *  指定したレジスタに対し連続して書込む
- *  書き込みデータのバイト数は4の倍数でなければならない。
- *  正常時：D_RESULT_SUCCESSを返す
- *  失敗時：D_RESULT_ERRORを返す
+ *  Write data to register continuously by spi
+ *  data size should be integer multipe of 4 bytes
+ *  success:D_RESULT_SUCCESS
+ *  failed :D_RESULT_ERROR
  */
 int spi_write_burst( unsigned int reg_addr, unsigned char *write_buff, int write_size )
 {
@@ -305,24 +306,24 @@ int spi_write_burst( unsigned int reg_addr, unsigned char *write_buff, int write
 		return D_RESULT_ERROR;
 	}
 	if( write_size % 4 != 0 ) {
-		DBG_ERR( "write_size は4の倍数でなければなりません。\n" );
+		DBG_ERR( "write_size should be interger multipe of 4 bytes\n" );
 		return D_RESULT_ERROR;
 	}
 	if( write_size > D_MAX_TRANSFER_SIZE ) {
-		DBG_ERR( "write_size は%d以下でなければなりません。\n", D_MAX_TRANSFER_SIZE );
+		DBG_ERR( "write_size should less than %d\n", D_MAX_TRANSFER_SIZE );
 		return D_RESULT_ERROR;
 	}
-	tx[0] = D_SPI_CMD_WRITE | ( 0xFF & ( reg_addr >> 8 ) );		// 読み出しコマンド
-	tx[1] = 0xFF & reg_addr;	// アドレス
+	tx[0] = D_SPI_CMD_WRITE | ( 0xFF & ( reg_addr >> 8 ) );		// command for writting
+	tx[1] = 0xFF & reg_addr;	// 
 	memcpy( &tx[2], write_buff, write_size );
 	return spi_transfer( tx, rx, write_size + 2 ); // +2はCMD分
 }
 
 /**
- *  指定したレジスタから指定バイト数分データを読み出す
- *  バイト数は4の倍数でなければならない
- *  正常時：D_RESULT_SUCCESSを返す
- *  失敗時：D_RESULT_ERRORを返す
+ *  Read data from register continuously by spi
+ *  data size should be integer multiple of 4 bytes 
+ *  success:D_RESULT_SUCCESS
+ *  failed:D_RESULT_ERROR
  */
 int spi_read_burst( unsigned int reg_addr, unsigned char *read_buff, int read_size )
 {
@@ -335,18 +336,18 @@ int spi_read_burst( unsigned int reg_addr, unsigned char *read_buff, int read_si
 		return D_RESULT_ERROR;
 	}
 	if( read_size % 4 != 0 ) {
-		DBG_ERR( "read_size は4の倍数でなければなりません。\n" );
+		DBG_ERR( "read_size should be interger multipe of 4 bytes\n" );
 		return D_RESULT_ERROR;
 	}
 	if( read_size > D_MAX_TRANSFER_SIZE ) {
-		DBG_ERR( "read_size は%d以下でなければなりません。\n", D_MAX_TRANSFER_SIZE );
+		DBG_ERR( "read_size should less than %d\n", D_MAX_TRANSFER_SIZE );
 		return D_RESULT_ERROR;
 	}
 
 	memset( tx, 0, sizeof( tx ) );
-	tx[0] = D_SPI_CMD_READ | ( 0xFF & ( reg_addr >> 8 ) );		// 読み出しコマンド
-	tx[1] = 0xFF & reg_addr;	// アドレス
-	ret = spi_transfer( tx, rx, read_size + 2 ); // +2はCMD分
+	tx[0] = D_SPI_CMD_READ | ( 0xFF & ( reg_addr >> 8 ) );		// command for reading 
+	tx[1] = 0xFF & reg_addr;	// address
+	ret = spi_transfer( tx, rx, read_size + 2 ); // CMD size = 2
 	if( ret != D_RESULT_SUCCESS ){
 		memset( read_buff, 0, read_size );	// 0 padding
 		return D_RESULT_ERROR;

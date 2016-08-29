@@ -24,14 +24,14 @@
 #include "bmd101_sensor_writer.h"
 #include "normal_sensor_writer.h"
 
-// デバッグ用メッセージ出力
+// Debug message
 #ifdef D_DBG_PRINT_ENABLE
 #define DBG_PRINT(...)	printf("%s(%d): ", __func__, __LINE__); printf(__VA_ARGS__)
 #else
 #define DBG_PRINT(...)
 #endif
 
-// エラー用メッセージ出力
+// Err message
 #ifdef D_DBG_ERR_ENABLE
 #define DBG_ERR(...)	fprintf(stderr, "[ERR] %s(%d): ", __func__, __LINE__); fprintf(stderr, __VA_ARGS__)
 #else
@@ -40,20 +40,20 @@
 
 
 enum log_chanel_e {
-    CHANEL_BMD101 = 0,
-    CHANEL_ACCELEROMETER,
-    CHANEL_GYRO,
-    CHANEL_ECOMPASS,
-    CHANEL_PRESSURE,
-    CHANEL_UNDEFINED
+    CHANNEL_BMD101 = 0,
+    CHANNEL_ACCELEROMETER,
+    CHANNEL_GYRO,
+    CHANNEL_ECOMPASS,
+    CHANNEL_PRESSURE,
+    CHANNEL_UNDEFINED
 };
 
-static thread_if_t *pIfToMain;	// メインスレッドとの通信インターフェース
+static thread_if_t *pIfToMain;	// main thread's I/F
 static FILE* fp;
 static int pipe_with_api[2];
 
 /**
-  * SD Writer 初期化
+  * SD Writer initialize
   */
 static int init_sd_writer( sdWriterArg *arg )
 {
@@ -69,7 +69,7 @@ static int init_sd_writer( sdWriterArg *arg )
 }
 
 /**
-  * メインスレッドにイベントを送信する
+  * Send event to main thread
   */
 static int sendEvent_toMain( thread_event_t* ev )
 {
@@ -81,7 +81,7 @@ static int sendEvent_toMain( thread_event_t* ev )
 }
 
 /**
-  * データ書き込みAPI関数
+  * Write data to SD card
   */
 int writeDataToTheMedia( int idx )
 {
@@ -98,7 +98,7 @@ int writeDataToTheMedia( int idx )
 
 
 /**
-  * APIからデータインデックスを受信する
+  * Receive data index from API
   */
 static int recvData( sensor_data_t** received_data )
 {
@@ -118,12 +118,12 @@ static int recvData( sensor_data_t** received_data )
 }
 
 /**
-  * codeからSensor idを取出し、Chanelに変換する
+  * Convert sensor id to channel 
   */
-static unsigned char getChanel( sensor_data_t* recv_data )
+static unsigned char getChannel( sensor_data_t* recv_data )
 {
 	int code;
-	unsigned char chanel;
+	unsigned char channel;
 	//	unsigned char* sensor_id = ((unsigned char*)(&code)) + 1;
 	unsigned char sensor_id;
 	code = recv_data->code;
@@ -131,25 +131,25 @@ static unsigned char getChanel( sensor_data_t* recv_data )
 
 	switch( sensor_id ) {
 	case SENSOR_ID_ECG_RAW:
-		chanel = CHANEL_BMD101;
+		channel = CHANNEL_BMD101;
 		break;
 	case SENSOR_ID_ACCEL_RAW:
-		chanel = CHANEL_ACCELEROMETER;
+		channel = CHANNEL_ACCELEROMETER;
 		break;
 	case SENSOR_ID_GYRO_RAW:
-		chanel = CHANEL_GYRO;
+		channel = CHANNEL_GYRO;
 		break;
 	case SENSOR_ID_MAGNET_RAW:
-		chanel = CHANEL_ECOMPASS;
+		channel = CHANNEL_ECOMPASS;
 		break;
 	case SENSOR_ID_PRESSURE_RAW:
-		chanel = CHANEL_PRESSURE;
+		channel = CHANNEL_PRESSURE;
 		break;
 	default:
-		chanel = CHANEL_UNDEFINED;
+		channel = CHANNEL_UNDEFINED;
 		break;
 	}
-	return chanel;
+	return channel;
 }
 
 void saveTheSensorData()
@@ -159,25 +159,25 @@ void saveTheSensorData()
 	int idx;
 	unsigned char channel;
 	idx = recvData( &recv_data );
-	//エラーチェック
+	// err check 
 	if( idx < 0 ) {
 		DBG_ERR( "read error\n" );
 		return;
 	}
-	channel = getChanel( recv_data );
+	channel = getChannel( recv_data );
 	switch( channel ) {
-	case CHANEL_ACCELEROMETER:
-	case CHANEL_ECOMPASS:
-	case CHANEL_PRESSURE:
-	case CHANEL_GYRO:
-		//write sync
+	case CHANNEL_ACCELEROMETER:
+	case CHANNEL_ECOMPASS:
+	case CHANNEL_PRESSURE:
+	case CHANNEL_GYRO:
+		// write sync
 		ucharWriter( kSync, sizeof(kSync), fp );
-		//write channel
+		// write channel
 		ucharWriter( &channel, 1, fp );
 		normalSensorWriter( recv_data, fp );
 		//		DBG_PRINT( "ch:0x%x wrote\n", channel );
 		break;
-	case CHANEL_BMD101:
+	case CHANNEL_BMD101:
 		//write sync
 		ucharWriter( kSync, sizeof(kSync), fp );
 		//write channel
@@ -185,7 +185,7 @@ void saveTheSensorData()
 		BMD101SensorWriter( recv_data, fp );
 		//		DBG_PRINT( "ch:0x%x wrote\n", channel );
 		break;
-	case CHANEL_UNDEFINED:
+	case CHANNEL_UNDEFINED:
 	default:
 		break;
 	}
@@ -200,21 +200,21 @@ void *sdWriter_main( void *arg )
 	struct pollfd fds[2];
 
 	//-------------------------------------------------------------------------
-	// パラメータチェック
+	// check argument
 	if( arg == NULL ) {
 		DBG_PRINT( "arg is NULL. SD Writer thread: end\n" );
 		return 0;
 	}
 
 	//-------------------------------------------------------------------------
-	// 初期化
+	// initialize 
 	if( init_sd_writer( ( sdWriterArg* ) arg ) != D_RESULT_SUCCESS ) {
 		DBG_ERR( "init_sd_writer error\n" );
 		exit( EXIT_FAILURE );
 	}
 
 	//-------------------------------------------------------------------------
-	// 初期化完了通知をメインスレッドに送る
+	// send EVENT_INITIALIZE_DONE to main thread 
 	ev.id = EVENT_INITIALIZE_DONE;
 	ev.data = 0;
 	sendEvent_toMain( &ev );
@@ -225,7 +225,7 @@ void *sdWriter_main( void *arg )
 	fds[0].events = POLLIN;
 	fds[1].fd = pIfToMain->pipe_in[D_PIPE_R];
 	fds[1].events = POLLIN;
-	//メッセージループ
+	// message loop
 	while( 1 ) {
 		fds[0].revents = 0;
 		fds[1].revents = 0;
@@ -238,7 +238,7 @@ void *sdWriter_main( void *arg )
 		}
 	}
 
-	// 終了処理
+	// release resource 
 	if( arg ) {
 		free( arg );
 	}

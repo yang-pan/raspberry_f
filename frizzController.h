@@ -15,7 +15,7 @@
 #include "common.h"
 
 /**
- * frizzスレッド用引数
+ * frizz thread's argument
  */
 typedef struct {
 	thread_if_t	thif;				// I/F to Main thread
@@ -25,7 +25,7 @@ typedef struct {
 
 
 /**
- * frizzコントローラスレッドメイン関数
+ * frizz control thread's main function 
  */
 void *frizzctrl_main( void *arg );
 

@@ -20,17 +20,17 @@
 #define D_FRIZZ_SENSOR_ACTIVATE		(1)	// sensor is active.
 
 /**
- *  frizzにファームウェアをダウンロードする
+ *  Write firmware into frizz's I-ram 
  */
 int frizzdrv_frizz_fw_download(const char* firmware_path );
 
 /**
- *  センサデータを読み出す
+ *  Receive and analyze packet   
  */
 int frizzdrv_receive_packet( void );
 
 /**
- * 指定されたsensor idをアクティベート/ディアクティベートする
+ * Activate/Deactivate sensor
  * sen_id: id of the sensor to activate/deactivate
  * enabled: D_FRIZZ_SENSOR_DEACTIVATE: disable the sensor
  *          D_FRIZZ_SENSOR_ACTIVATE:   enable the sensor
@@ -42,8 +42,8 @@ int frizzdrv_receive_packet( void );
 int frizzdrv_activate( libsensors_id_e sen_id, int enabled, int use_fifo, int use_int );
 
 /**
- * センサイベント発生時にGPIO割込みを行うようfrizzに設定する
- * gpio_num:   gpio番号(0～3)
+ * Activate the GPIO IRQ function of frizz (IRQ: frizz -> raspberry)
+ * gpio_num:   gpio number (0~3)
  * gpio_level: 0: Active High, !0: Avtive Low
  */
 #define D_FRIZZ_GPIO_INT_NUM_0	(0)	// gpio_num: use gpio number 0 for interrupt
@@ -55,9 +55,9 @@ int frizzdrv_activate( libsensors_id_e sen_id, int enabled, int use_fifo, int us
 int frizzdrv_set_setting( unsigned int gpio_num, int gpio_level );
 
 /**
- *  verレジスタを読み出す
- *  成功した場合はverの値を返す。
- *  失敗した場合は-1を返す。
+ *  Get frizz version number from register 
+ *  return value: version number (sucess)
+ *                      -1       (failed)
  */
 int frizzdrv_read_ver_reg( void );
 

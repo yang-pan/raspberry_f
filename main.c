@@ -20,22 +20,22 @@
 #include "frizzController.h"
 #include "SD_Writer.h"
 
-// デバッグ用メッセージ出力
+// Debug message
 #ifdef D_DBG_PRINT_ENABLE
 #define DBG_PRINT(...)	printf("%s(%d): ", __func__, __LINE__); printf(__VA_ARGS__)
 #else
 #define DBG_PRINT(...)
 #endif
 
-// エラー用メッセージ出力
+// Err message
 #ifdef D_DBG_ERR_ENABLE
 #define DBG_ERR(...)	fprintf(stderr, "[ERR] %s(%d): ", __func__, __LINE__); fprintf(stderr, __VA_ARGS__)
 #else
 #define DBG_ERR(...)
 #endif
 
-#define D_SPI_DEV_PATH "/dev/spidev0.0"			// frizzを接続しているSPIデバイスファイル
-#define D_FRIZZ_FIWMWARE_PATH	"bin/from.bin"	// frizz ファームウェア
+#define D_SPI_DEV_PATH "/dev/spidev0.0"			// The device file of SPI which connect with frizz 
+#define D_FRIZZ_FIWMWARE_PATH	"bin/from.bin"	// Firmware of frizz
 
 #define D_INPUT_BUFF_SIZE	(256)
 
@@ -50,18 +50,18 @@ static int init_ThreadAttr( pthread_attr_t *attr_thread, int prioryty )
 	int		policy;
 	struct	sched_param param;
 
-	// スレッド属性の設定
+	// Initialize thread
 	ret = pthread_attr_init( attr_thread );
 	if( ret != 0 ) {
-		DBG_ERR( "スレッド情報初期化 ret=%x\n", ret );
+		DBG_ERR( "Init thread ret=%x\n", ret );
 		return D_RESULT_ERROR;
 	}
 
-	// 一応スタックサイズを取得してみる
+	// Check stack size
 	ret = pthread_attr_getstacksize( attr_thread, &tmp_stacksize );
 	if( ret != 0 ) {
 		pthread_attr_destroy( attr_thread );
-		DBG_ERR( "スレッドスタック情報取得失敗 ret=%x\n", ret );
+		DBG_ERR( "Get thread stack size failed! ret=%x\n", ret );
 		return D_RESULT_ERROR;
 	}
 
@@ -69,24 +69,24 @@ static int init_ThreadAttr( pthread_attr_t *attr_thread, int prioryty )
 	ret = pthread_attr_setschedpolicy( attr_thread, policy );
 	if( ret != 0 ) {
 		pthread_attr_destroy( attr_thread );
-		DBG_ERR( "スレッドポリシー情報設定失敗 ret=%x\n", ret );
+		DBG_ERR( "Set thread policy failed! ret=%x\n", ret );
 		return D_RESULT_ERROR;
 	}
 
 	memset( &param, 0x00, sizeof( param ) );
 
-	// 優先度設定
+	// Set priority
 	ret = pthread_attr_getschedparam( attr_thread, &param );
 	if( ret != 0 ) {
 		pthread_attr_destroy( attr_thread );
-		DBG_ERR( "スケジュールParam取得失敗 ret = %d(err:%d)\n", ret, errno );
+		DBG_ERR( "Get scheparam failed! ret = %d(err:%d)\n", ret, errno );
 		return D_RESULT_ERROR;
 	}
 	param.sched_priority = prioryty;
 	ret = pthread_attr_setschedparam( attr_thread, &param );
 	if( ret != 0 ) {
 		pthread_attr_destroy( attr_thread );
-		DBG_ERR( "スレッド優先度設定失敗 ret = %d(err:%d)\n", ret, errno );
+		DBG_ERR( "Set thread prioryty filed! ret = %d(err:%d)\n", ret, errno );
 		return D_RESULT_ERROR;
 	}
 
@@ -94,7 +94,7 @@ static int init_ThreadAttr( pthread_attr_t *attr_thread, int prioryty )
 }
 
 /**
-  * メインスレッドにイベントを送信する
+  * Send event to main thread
   */
 #ifdef D_USE_GPIO_IRQ
 static int sendEvent( ThreadIdx_e thidx, thread_event_t* ev )
@@ -131,7 +131,7 @@ int main( int argc, char **argv )
 	DBG_PRINT( "--- ECG_log: start ---\n" );
 
 	//-------------------------------------------------------------------------
-	// 引数からログ出力ファイル名を取得
+	// Get log file's name from argument
 	//-------------------------------------------------------------------------
 	if( argc != 2 ) {
 		DBG_ERR( "Usage) %s <logfile_path>\n", argv[0] );
@@ -143,15 +143,16 @@ int main( int argc, char **argv )
 	}
 
 	//-------------------------------------------------------------------------
-	// frizz Controller Thread 起動
+	// Start the frizz Controller Thread 
 	//-------------------------------------------------------------------------
 	DBG_PRINT( "Create frizz Controller thread\n" );
-	// ここで確保したメモリはスレッド内で開放する
+	// Malloc memory 
 	frzzCtrlArg = malloc( sizeof( frizzCntrollerArg ) );
 	if( frzzCtrlArg == NULL ) {
 		DBG_ERR( "malloc error\n" );
 		exit( EXIT_FAILURE );
 	}
+	
 	pipe( frzzCtrlArg->thif.pipe_in );	// Main thread -> frizz Controller thread
 	pipe( frzzCtrlArg->thif.pipe_out ); // frizz Controller thread -> Main thread
 
@@ -160,34 +161,35 @@ int main( int argc, char **argv )
 	strncpy( frzzCtrlArg->frizz_firmware_path, D_FRIZZ_FIWMWARE_PATH, strlen( D_FRIZZ_FIWMWARE_PATH ) );
 	frzzCtrlArg->frizz_firmware_path[sizeof( frzzCtrlArg->frizz_firmware_path ) - 1] = 0;
 
-	// Attribute 設定
+	// Set Attribute 
 	if( init_ThreadAttr( &attr, 50 ) != D_RESULT_SUCCESS ) {
 		DBG_ERR( "setting attribute NG\n" );
 		exit( EXIT_FAILURE );
 	}
 
-	// frizz Ctrlスレッドの優先度設定
+	// frizz Ctrl 
 	if( pthread_create( &th_frizzctrl, &attr, frizzctrl_main, frzzCtrlArg ) != 0 ) {
 		DBG_ERR( "pthread_create() error\n" );
 		exit( EXIT_FAILURE );
 	}
-	// frizz Controller threadの起動完了を待つ
+	
+	// Set frizz Controller thread's priority
 	memset( &ev, 0, sizeof( ev ) );
 	if( read( frzzCtrlArg->thif.pipe_out[D_PIPE_R], &ev, sizeof( ev ) ) < 0 ) {
 		DBG_ERR( "read error\n" );
 		exit( EXIT_FAILURE );
 	}
 	if( ev.id != EVENT_INITIALIZE_DONE ) {
-		DBG_ERR( "frizz Controller 初期化失敗\n" );
+		DBG_ERR( "frizz Controller initialize failed\n" );
 		exit( EXIT_FAILURE );
 	}
-	DBG_PRINT( "frizz Controller 起動完了\n" );
+	DBG_PRINT( "frizz Controller start finished\n" );
 
 	//-------------------------------------------------------------------------
-	// SD Writer Thread 起動
+	// Start the SD Writer Thread 
 	//-------------------------------------------------------------------------
 	DBG_PRINT( "Create SD Writer thread\n" );
-	// ここで確保したメモリはスレッド内で開放する
+	// Malloc memory
 	sdArg = malloc( sizeof( sdWriterArg ) );
 	if( sdArg == NULL ) {
 		DBG_ERR( "malloc error\n" );
@@ -196,7 +198,7 @@ int main( int argc, char **argv )
 	pipe( sdArg->thif.pipe_in );
 	pipe( sdArg->thif.pipe_out );
 
-	// エラーチェックしてないので注意
+	// Be careful because have no err check here. 
 	strncpy( sdArg->log_file_path, argv[1], sizeof( sdArg->log_file_path ) );
 	sdArg->log_file_path[sizeof( sdArg->log_file_path ) - 1] = 0;
 
@@ -204,22 +206,22 @@ int main( int argc, char **argv )
 		DBG_ERR( "pthread_create() error\n" );
 		exit( EXIT_FAILURE );
 	}
-	// SD Writer threadの起動完了を待つ
+	// Wait SD Writer thread start 
 	memset( &ev, 0, sizeof( ev ) );
 	if( read( sdArg->thif.pipe_out[D_PIPE_R], &ev, sizeof( ev ) ) < 0 ) {
 		DBG_ERR( "read error\n" );
 		exit( EXIT_FAILURE );
 	}
 	if( ev.id != EVENT_INITIALIZE_DONE ) {
-		DBG_ERR( "SD Writer 初期化失敗\n" );
+		DBG_ERR( "SD Writer initialize failed\n" );
 		exit( EXIT_FAILURE );
 	}
-	DBG_PRINT( "SD Writer 起動完了\n" );
+	DBG_PRINT( "SD Writer start finished\n" );
 
-	// 他スレッドのコンソール出力と被るので1秒待つ
+	// wait 1 second to avoid console conflict with other thread 
 	sleep( 1 );
 
-	// メインループ
+	// main loop 
 	while( 1 ) {
 		printf( "> " );
 		scanf( "%s", inbuff );
@@ -237,8 +239,8 @@ int main( int argc, char **argv )
 	}
 
 	DBG_PRINT( "Waiting for finishing all threads\n" );
-	pthread_join( th_frizzctrl, NULL ); /*thread_func()スレッドが終了するのを待機する*/
-	pthread_join( th_sdwriter, NULL ); /*thread_func()スレッドが終了するのを待機する*/
+	pthread_join( th_frizzctrl, NULL ); /*Wait until thread_func() been killed*/
+	pthread_join( th_sdwriter, NULL ); /*Wait undtil thread_func() been killed*/
 
 	DBG_PRINT( "--- ECG_log: end ---\n" );
 	return 0;

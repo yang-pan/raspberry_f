@@ -24,14 +24,14 @@
 #include "frizzDriver.h"
 #include "serial.h"
 
-// デバッグ用メッセージ出力
+// Debug message
 #ifdef D_DBG_PRINT_ENABLE
 #define DBG_PRINT(...)	printf("%s(%d): ", __func__, __LINE__); printf(__VA_ARGS__)
 #else
 #define DBG_PRINT(...)
 #endif
 
-// エラー用メッセージ出力
+// Err message
 #ifdef D_DBG_ERR_ENABLE
 #define DBG_ERR(...)	fprintf(stderr, "[ERR] %s(%d): ", __func__, __LINE__); fprintf(stderr, __VA_ARGS__)
 #else
@@ -39,15 +39,15 @@
 #endif
 
 #ifdef D_USE_GPIO_IRQ
-#define D_RPI_GPIO_IRQ_PIN	(17) // ラズベリーパイの割込み用GPIOピン番号
-static int pipe_gpio_irq[2];	// GPIO割込みからのコマンド受信用パイプ
+#define D_RPI_GPIO_IRQ_PIN	(17) // GPIO IRQ pin number
+static int pipe_gpio_irq[2];	// pipe for GPIO IRQ
 #endif
 
-static thread_if_t *pIfToMain;	// メインスレッドとの通信インターフェース
+static thread_if_t *pIfToMain;	// interface to communicate with main thread
 
 /**
- *  GPIO割込みハンドラ
- *  frizzからセンサデータ割込みを受けたタイミングで呼ばれる
+ *  GPIO IRQ driver
+ *  triggered by frizz for processing sensor data 
  */
 #ifdef D_USE_GPIO_IRQ
 static void gpio_irq_handler( void )
@@ -60,7 +60,7 @@ static void gpio_irq_handler( void )
 #endif
 
 /**
-  * frizz Cotroller 初期化
+  * Initialize frizz Cotroller 
   */
 static int init_frizz_controller( frizzCntrollerArg *arg )
 {
@@ -70,21 +70,21 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
 	DBG_PRINT( "SPI device         : %s\n", arg->spi_dev_path );
 	DBG_PRINT( "frizz firmware path: %s\n", arg->frizz_firmware_path );
 
-	// センサバッファを初期化
+	// initialize sensor buffer
 	ret = senbuff_init();
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "sensor buffer initialize failed\n" );
 		return D_RESULT_ERROR;
 	}
 
-	// SPIを初期化
+	// initialize SPI
 	ret = serial_open( arg->spi_dev_path );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "serial open failed\n" );
 		return D_RESULT_ERROR;
 	}
 
-	// frizzのバージョンレジスタを読み出す
+	// Get frizz's version info
 	ver = frizzdrv_read_ver_reg();
 	DBG_PRINT( "frizz version      : 0x%08x\n", ver );
 	if( ver != D_FRIZZ_CHIPID ) {
@@ -92,7 +92,7 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
 		return D_RESULT_ERROR;
 	}
 
-	// frizzを初期化する
+	// initialize frizz
 	ret = frizzdrv_frizz_fw_download( arg->frizz_firmware_path );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "frizz firmware download failed\n" );
@@ -100,17 +100,17 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
 	}
 
 #ifdef D_USE_GPIO_IRQ
-	// 割り込みハンドラからコマンドを受診するためのパイプを初期化
+	// initialize the pipe for 
 	if( pipe( pipe_gpio_irq ) != 0 ) {
 		DBG_ERR( "pipe error. errno=%d. %s\n", errno, strerror( errno ) );
 		return D_RESULT_ERROR;
 	}
 
-	// 割込み設定(GPIO 1, Active Low)
+	// GPIO IRQ setting(GPIO 1, Active Low) -- raspberry side 
 	wiringPiSetupSys();
 	wiringPiISR( D_RPI_GPIO_IRQ_PIN, INT_EDGE_FALLING, gpio_irq_handler );
 
-	// GPIOによる通知を有効化(GPIO 1, Active Low)
+	// GPIO IRQ setting(GPIO 1, Active Low) -- frizz side
 	ret = frizzdrv_set_setting( D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "frizz GPIO setting failed\n" );
@@ -122,7 +122,7 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
 }
 
 /**
-  * メインスレッドにイベントを送信する
+  * Send event to main
   */
 static int sendEvent_toMain( thread_event_t* ev )
 {
@@ -134,7 +134,7 @@ static int sendEvent_toMain( thread_event_t* ev )
 }
 
 /**
- * frizzコントローラスレッドメイン関数
+ * main function of frizz control thread
  */
 void *frizzctrl_main( void *arg )
 {
@@ -142,23 +142,22 @@ void *frizzctrl_main( void *arg )
 	thread_event_t ev;
 	DBG_PRINT( "frizz controller thread: start\n" );
 
-
 	//-------------------------------------------------------------------------
-	// パラメータチェック
+	// check argument 
 	if( arg == NULL ) {
 		DBG_PRINT( "arg is NULL. frizz controller thread: end\n" );
 		exit( EXIT_FAILURE );
 	}
 
 	//-------------------------------------------------------------------------
-	// 初期化
+	// initialize
 	if( init_frizz_controller( ( frizzCntrollerArg* ) arg ) != D_RESULT_SUCCESS ) {
 		DBG_ERR( "init_frizz_controller error\n" );
 		exit( EXIT_FAILURE );
 	}
 
 	//-------------------------------------------------------------------------
-	// 初期化完了通知をメインスレッドに送る
+	// send EVENT_INITIALIZE_DONE to main thread  
 	ev.id = EVENT_INITIALIZE_DONE;
 	ev.data = 0;
 	ret = sendEvent_toMain( &ev );
@@ -168,36 +167,36 @@ void *frizzctrl_main( void *arg )
 	}
 
 	//-------------------------------------------------------------------------
-	// frizzセンサアクティベート
-	// センサアクティベート(加速度)
+	// Activate sensors
+	// (accrometer)
 	ret = frizzdrv_activate( SENSOR_ID_ACCEL_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate acc failed\n" );
 		exit( EXIT_FAILURE );
 	}
 
-	// センサアクティベート(ジャイロ)
+	// gyro
 	ret = frizzdrv_activate( SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate gyro failed\n" );
 		exit( EXIT_FAILURE );
 	}
 
-	// センサアクティベート(ecompass)
+	// compress
 	ret = frizzdrv_activate( SENSOR_ID_MAGNET_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate ecompass failed\n" );
 		exit( EXIT_FAILURE );
 	}
 
-	// センサアクティベート(Pressure)
+	// pressure
 	ret = frizzdrv_activate( SENSOR_ID_PRESSURE_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate pressure failed\n" );
 		exit( EXIT_FAILURE );
 	}
 
-	// センサアクティベート(ECG)
+	// ECG
 	ret = frizzdrv_activate( SENSOR_ID_ECG_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate ecg failed\n" );
@@ -215,7 +214,7 @@ void *frizzctrl_main( void *arg )
 	fds[1].events = POLLIN;
 	fds[1].revents = 0;
 
-	//メッセージループ
+	//message loop
 	while( 1 ) {
 		poll( fds , ARRAY_SIZE( fds ), -1 );
 
@@ -229,13 +228,13 @@ void *frizzctrl_main( void *arg )
 				poll( &fds[0] , 1, 0 );
 			} while( fds[0].revents & POLLIN );
 
-			// GPIO割込みが発生した場合センサデータを読み出す
+			// read sensor data if GPIO IRQ happend
 			while( frizzdrv_receive_packet() == D_RESULT_SUCCESS );
 			fds[0].revents = 0;
 		}
 		// Message from Main thread
 		if( fds[1].revents & POLLIN ) {
-			// メインスレッドからコマンドを受信した場合、スレッドを終了する
+			// 
 			break;
 		}
 	}
@@ -246,7 +245,7 @@ void *frizzctrl_main( void *arg )
 	}
 #endif
 
-	// 終了処理
+	// 
 	if( arg ) {
 		free( arg );
 	}

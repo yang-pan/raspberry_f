@@ -11,23 +11,23 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
-// プリント文有効化マクロ
-#define D_DBG_PRINT_ENABLE	// 標準ログ
-#define D_DBG_ERR_ENABLE	// エラーログ
+// Macro for printf
+#define D_DBG_PRINT_ENABLE	// standard log
+#define D_DBG_ERR_ENABLE	// err log
 
-// frizzからのGPIO割込みを使用
+// Macro for GPIO IRQ (frizz => raspberry)
 //#define D_USE_GPIO_IRQ
 
-// 配列要素数算出マクロ
+// array size 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-// パイプインデックス
-#define D_PIPE_R	(0)	// 読み込み用
-#define D_PIPE_W	(1)	// 書き込み用
+// index of pipe
+#define D_PIPE_R	(0)	// for reading
+#define D_PIPE_W	(1)	// for writting
 
-// 関数返り値
-#define D_RESULT_SUCCESS	(0)		// 正常終了
-#define D_RESULT_ERROR		(-1)	// エラー
+// return value
+#define D_RESULT_SUCCESS	(0)		// success
+#define D_RESULT_ERROR		(-1)	// err
 
 /**
  * Thread ID
@@ -43,11 +43,11 @@ typedef enum {
  *  Event ID
  */
 enum EventIdx {
-	// 共通
-    EVENT_INITIALIZE_DONE = 0,		// thread 起動完了
-    EVENT_FINISH_THREAD,			// thread 終了
-    // frizz Controller用
-    EVENT_FRIZZCTRL_GPIO_IRQ = 1000,	// GPIO割込み発生
+	// common
+    EVENT_INITIALIZE_DONE = 0,		// initialize thread finished
+    EVENT_FINISH_THREAD,			// terminate thread finished
+    // frizz Controller
+    EVENT_FRIZZCTRL_GPIO_IRQ = 1000,	// GPIO IRQ happend
 };
 
 /**
@@ -72,12 +72,12 @@ typedef struct {
 void common_changeEndian( unsigned int* src );
 
 /**
- * スレッド間インタフェース情報画面出力
+ * print thread I/F info
  */
 void common_print_pipe( thread_if_t *thif );
 
 /**
- * イベント内容画面出力
+ * print event info
  */
 void common_print_event( thread_event_t *ev );
 

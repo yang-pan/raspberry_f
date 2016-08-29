@@ -11,14 +11,14 @@
 #include <stdio.h>
 #include "normal_sensor_writer.h"
 
-// デバッグ用メッセージ出力
+// Debug message
 #ifdef D_DBG_PRINT_ENABLE
 #define DBG_PRINT(...)	printf("%s(%d): ", __func__, __LINE__); printf(__VA_ARGS__)
 #else
 #define DBG_PRINT(...)
 #endif
 
-// エラー用メッセージ出力
+// Err message
 #ifdef D_DBG_ERR_ENABLE
 #define DBG_ERR(...)	fprintf(stderr, "[ERR] %s(%d): ", __func__, __LINE__); fprintf(stderr, __VA_ARGS__)
 #else
@@ -26,8 +26,8 @@
 #endif
 
 /**
-  * unsigned charの値をファイルに保存する
-  * lengthは最大255でなければならない
+  * save data(unsigned char) to file 
+  * length: 0~255
   */
 void ucharWriter( const unsigned char* write_data, unsigned char length, FILE* fp )
 {
@@ -39,20 +39,20 @@ void ucharWriter( const unsigned char* write_data, unsigned char length, FILE* f
 }
 
 /**
-  * センサデータのcodeから、センサデータのバイト数を算出する
+  * Get the length of sensor data
   */
 unsigned char getSensorDataLength( sensor_data_t* recv_data )
 {
 	int code;
 	unsigned char num;
 	code = recv_data->code;
-	num = 0xFF & code;	// numはtimetamp(1)とセンサデータ数の合計値
-	num -= 1; // timestamp分を引く
+	num = 0xFF & code;	// num = num_timestamp + num_data
+	num -= 1; // num_timestamp = 1
 	return ( num * 4 );	// 1[word] = 4[byte]
 }
 
 /**
-  * sendor dataからcheckSumを計算する
+  * Calculate sendor data's checksum
   */
 unsigned char calcCheckSum( sensor_data_t* recv_data )
 {
@@ -69,8 +69,8 @@ unsigned char calcCheckSum( sensor_data_t* recv_data )
 }
 
 /**
- * 加工(パディングや不要センサデータの削除など)が必要ないセンサデータを
- * ファイルに書き出す
+ * Write data to file
+ * 
  */
 void normalSensorWriter( sensor_data_t* recv_data, FILE* fp )
 {
@@ -78,7 +78,7 @@ void normalSensorWriter( sensor_data_t* recv_data, FILE* fp )
 	unsigned int timestamp;
 	unsigned char checksum;
 
-	// 書き込みデータ作成
+	// packet the package
 	// timestamp
 	timestamp = recv_data->frizz_ms;
 	// length
@@ -86,7 +86,7 @@ void normalSensorWriter( sensor_data_t* recv_data, FILE* fp )
 	// checksum
 	checksum = calcCheckSum( recv_data );
 
-	// データ書き込み
+	// write data 
 	ucharWriter( ( unsigned char* )&timestamp, 4, fp );
 	ucharWriter( &length, 1, fp );
 	ucharWriter( ( unsigned char* )recv_data->f32_value, length, fp );

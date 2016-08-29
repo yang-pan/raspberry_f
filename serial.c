@@ -11,12 +11,12 @@
 #include "serial.h"
 
 #define CONFIG_FRIZZ_SPI
-//#define CONFIG_FRIZZ_I2C // 現在は未実装
+//#define CONFIG_FRIZZ_I2C // not support now
 
 #ifdef CONFIG_FRIZZ_SPI
 #include "spi.h"
 #elif defined CONFIG_FRIZZ_I2C
-//#include "i2c.h" // 現在は未実装
+//#include "i2c.h" // not support now
 #endif
 
 void prepare_command( unsigned char command, unsigned int reg_addr, unsigned char *tx_buff )
@@ -55,7 +55,7 @@ void serial_close( void )
 }
 
 /**
- * 指定したレジスタに値を書込む
+ * Write data(4bytes) to register 
  */
 int serial_write_reg_32( unsigned int reg_addr, unsigned int data )
 {
@@ -67,7 +67,7 @@ int serial_write_reg_32( unsigned int reg_addr, unsigned int data )
 }
 
 /**
- * 指定したレジスタの値を読み出す
+ * Read data(4bytes) from register
  */
 int serial_read_reg_32( unsigned int reg_addr, unsigned int *data )
 {
@@ -79,8 +79,8 @@ int serial_read_reg_32( unsigned int reg_addr, unsigned int *data )
 }
 
 /**
- *  指定したレジスタに対し連続して書込む
- *  書き込みデータのバイト数は4の倍数でなければならない
+ *  Write data to register continuously
+ *  data size should be an integer multiple of 4 bytes
  */
 int serial_write_burst( unsigned int reg_addr, unsigned char *write_buff, int write_size )
 {
@@ -92,8 +92,8 @@ int serial_write_burst( unsigned int reg_addr, unsigned char *write_buff, int wr
 }
 
 /**
- *  指定したレジスタから指定バイト数分データを読み出す
- *  バイト数は4の倍数でなければならない
+ *  Read data from register continuously
+ *  data size should be and integer multiple of 4 bytes 
  */
 int serial_read_burst( unsigned int reg_addr, unsigned char *read_buff, int read_size )
 {

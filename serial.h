@@ -28,24 +28,24 @@ int serial_open( const char* serial_dev_path );
 void serial_close( void );
 
 /**
- * 指定したレジスタに値を書込む
+ * Write data(4bytes) to register 
  */
 int serial_write_reg_32( unsigned int, unsigned int );
 
 /**
- * 指定したレジスタの値を読み出す
+ * Read data(4bytes) from register
  */
 int serial_read_reg_32( unsigned int, unsigned int* );
 
 /**
- *  指定したレジスタに対し連続して書込む
- *  書き込みデータのバイト数は4の倍数でなければならない
+ *  Write data to register continuously
+ *  data size should be an integer multiple of 4 bytes
  */
 int serial_write_burst( unsigned int reg_addr, unsigned char *write_buff, int write_size );
 
 /**
- *  指定したレジスタから指定バイト数分データを読み出す
- *  バイト数は4の倍数でなければならない
+ *  Read data from register continuously
+ *  data size should be and integer multiple of 4 bytes 
  */
 int serial_read_burst( unsigned int reg_addr, unsigned char *read_buff, int read_size );
 

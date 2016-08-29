@@ -26,14 +26,14 @@
 #include "sensor_buff.h"
 #include "SD_Writer.h"
 
-// デバッグ用メッセージ出力
+// Debug message
 #ifdef D_DBG_PRINT_ENABLE
 #define DBG_PRINT(...)	printf("%s(%d): ", __func__, __LINE__); printf(__VA_ARGS__)
 #else
 #define DBG_PRINT(...)
 #endif
 
-// エラー用メッセージ出力
+// Err message
 #ifdef D_DBG_ERR_ENABLE
 #define DBG_ERR(...)	fprintf(stderr, "[ERR] %s(%d): ", __func__, __LINE__); fprintf(stderr, __VA_ARGS__)
 #else
@@ -85,7 +85,7 @@ typedef struct {
 } fifo_queue_t;
 static fifo_queue_t fifo_q;
 /**
- *  frizzをRESET/STALLする
+ *  set frizz RESET/STALL
  */
 static int frizz_hardware_stall( void )
 {
@@ -107,7 +107,7 @@ static int frizz_hardware_stall( void )
 }
 
 /**
- *  frizzをRESET/RUNする
+ *  set frizz RESET/RUN
  */
 static int frizz_hardware_reset( void )
 {
@@ -129,9 +129,9 @@ static int frizz_hardware_reset( void )
 }
 
 /**
- *  cnrを読み出す
- *  成功時：cnr値を返す
- *  失敗時：-1を返す
+ *  read cnr
+ *  return value: cnt (read success)         
+ *                 -1 (read failed )
  */
 static int frizz_get_cnr( void )
 {
@@ -144,7 +144,7 @@ static int frizz_get_cnr( void )
 		return buff_num;
 	}
 
-	// cnrを読み出す
+	// get cnr 
 	ret = serial_read_reg_32( D_FRIZZ_REG_ADDR_FIFO_CNR, &cnr );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "read cnr failed\n" );
@@ -156,23 +156,24 @@ static int frizz_get_cnr( void )
 }
 
 /**
- *  fifoを1ワード読み出す
- *  読み出せた場合はD_RESULT_SUCCESSを返す。
- *  読み出せなかった場合はD_RESULT_ERRORを返す。
+ *  read one word from fifo
+ *  return value: D_RESULT_SUCCESS
+ *                D_RESULT_ERROR
+ *  
  */
 static int frizz_get_fifo( unsigned int *read_buff )
 {
 	int cnr;
 	int ret;
 
-	// バッファにデータが入っているので1つ取り出して返す
+	// Get data from buffer
 	if( fifo_q.next > fifo_q.curr ) {
 		*read_buff = fifo_q.buff[fifo_q.curr];
 		common_changeEndian( read_buff );
 		fifo_q.curr++;
 		return D_RESULT_SUCCESS;
 	}
-	// バッファにデータが入っていないので、fifoの内容を全て抜き出す
+	// no data in buff,get from fifo(empty fifo)
 	cnr = frizz_get_cnr();
 	if( cnr <= 0 ) {
 		return D_RESULT_ERROR;
@@ -192,20 +193,20 @@ static int frizz_get_fifo( unsigned int *read_buff )
 }
 
 /**
- * ram_dataに連続してデータを書込む
+ * write data to ram_data continuously
  */
 static int frizz_write_ram( unsigned int ram_addr, unsigned char *write_data, unsigned int size )
 {
 	unsigned int write_size;
 	unsigned char *pwrite = write_data;
 
-	// 書き込みアドレスを設定
+	// set adress 
 	if( serial_write_reg_32( D_FRIZZ_REG_ADDR_RAM_ADDR, ram_addr ) != D_RESULT_SUCCESS ) {
 		DBG_ERR( "writing ram_addr reg failed\n" );
 		return D_RESULT_ERROR;
 	}
 
-	// 256バイト単位で書込む
+	// write 256byte each time
 	while( size != 0 ) {
 		if( size >= 256 ) {
 			write_size = 256;
@@ -223,21 +224,21 @@ static int frizz_write_ram( unsigned int ram_addr, unsigned char *write_data, un
 }
 
 /**
- * ram_dataから連続してデータを読み出す
+ *  read data from ram_data continuously
  */
 static int frizz_read_ram( unsigned int ram_addr, unsigned char *read_buff, unsigned int size )
 {
 	unsigned int read_size;
 	unsigned char *pread = read_buff;
 
-	// 256バイト単位で読み出す
+	// read 256byte 
 	while( size != 0 ) {
 		if( size >= 256 ) {
 			read_size = 256;
 		} else {
 			read_size = size;
 		}
-		// 読み出しアドレスを設定
+		// set address
 		serial_write_reg_32( D_FRIZZ_REG_ADDR_RAM_ADDR, ram_addr );
 
 		serial_read_burst( D_FRIZZ_REG_ADDR_RAM_DATA, pread, read_size );
@@ -250,8 +251,8 @@ static int frizz_read_ram( unsigned int ram_addr, unsigned char *read_buff, unsi
 
 /**
  * Receive packet from frizz
- * 成功時はD_RESULT_SUCCESSを返す。
- * 失敗時はD_RESULT_ERRORを返す。
+ * return value: D_RESULT_SUCCESS
+ *               D_RESULT_ERROR
  */
 static int frizz_receive_packet( frizz_packet_t *packet )
 {
@@ -280,7 +281,7 @@ static int frizz_receive_packet( frizz_packet_t *packet )
 }
 
 /**
- *  frizzから受信したパケットの処理を行う
+ *  analyze the package get from frizz
  */
 static int analyze_packet( frizz_packet_t *packet )
 {
@@ -301,7 +302,7 @@ static int analyze_packet( frizz_packet_t *packet )
 	}
 #endif
 
-	// センサデータの場合はバッファを確保しSD Writerに送付する
+	// send to SD Writer if get sensor data
 	if( D_IS_SENSOR_DATA( packet ) ) {
 		idx = senbuff_alloc( &pSensorData );
 		//		DBG_PRINT( "idx:%d, pSensorData:%p\n", idx, pSensorData );
@@ -310,7 +311,7 @@ static int analyze_packet( frizz_packet_t *packet )
 			senbuff_free( idx );
 			return D_RESULT_ERROR;
 		}
-		// frizzから受信した時点のシステム時刻を保存する。(負荷低減のため現在は外している)
+		// save timestamp when get data from frizz �(comment out because it's too heavy)
 		//		gettimeofday( &tv, NULL );
 		tv.tv_sec = 0;
 		tv.tv_usec = 0;
@@ -327,16 +328,16 @@ static int analyze_packet( frizz_packet_t *packet )
 }
 
 /**
- * ACKを待つ。ACKを受けるまでに受信した他パケットは画面出力のみ行う。
- * 引数でタイムアウト[ms]を指定する。
- * タイムアウトは10ms単位とする。
+ * wait ACK.
+ * output the package recevied during the waitting time to screen
+ * Throw timeout each 10ms if not get package
  */
 static int wait_ack( int timeout_ms )
 {
 	int tmp, ret;
 	frizz_packet_t rcv_packet;
 
-	// 10ms以下の単位を切り捨て
+	// 10m
 	tmp = timeout_ms % 10;
 	timeout_ms -= tmp;
 
@@ -364,9 +365,8 @@ static int wait_ack( int timeout_ms )
 }
 
 /**
- * コマンドをfrizzに対して送信する
- * コマンドのデータ部まで送信し、ACKを受けるところまで行う
- * Responseは処理しない
+ * send command to frizz
+ * include ack package processing(ignore Response package)
  */
 static int send_packet( const frizz_packet_t *packet )
 {
@@ -437,31 +437,31 @@ static int frizz_fw_download( int frizz_fp )
 		read_file_size = read( frizz_fp, read_data, 1 );
 		header = read_data[0];
 		if( header == 0xC9 ) {
-			// length読み出し
+			// get length
 			read_file_size = read( frizz_fp, read_data, 3 );
 			data_size = ( ( read_data[0] << 16 ) | ( read_data[1] << 8 ) | ( read_data[2] ) ) - 6;
 
-			// SPI/I2C通信用CMD読み出し(使用しない)
+			// get command for SPI/I2C(not use)
 			read_file_size = read( frizz_fp, read_data, 2 );
 
-			// 書き込み先RAMアドレス読み出し
+			// get address to write 
 			read_file_size = read( frizz_fp, read_data, 4 );
 			ram_addr = ( read_data[0] << 24 ) | ( read_data[1] << 16 ) | ( read_data[2] << 8 ) | ( read_data[3] );
 
-			//keep memory
+			// keep memory
 			write_ram_data = malloc( data_size );
 			read_file_size = read( frizz_fp, write_ram_data, data_size );
 
 			modified_ram_size  = data_size + 3;
 			modified_ram_size &= 0xFFFFFFFC;
 
-			// RAMにファームウェアを書込む
+			// write firmware to RAM
 			DBG_PRINT( "frizz_write_ram Start(ram_addr=0x%08x, write_ram_data=%p, modified_ram_size=%d)\n",
 			           ram_addr, write_ram_data, modified_ram_size );
 			frizz_write_ram( ram_addr, write_ram_data, modified_ram_size );
 			DBG_PRINT( "serial_write_reg_ram_data End\n" );
 
-			// 書き込みデータを読み直してベリファイ
+			// verify the data have been written
 			read_ram_data = malloc( data_size );
 			DBG_PRINT( "Verify Start(ram_addr=0x%08x, read_ram_data=%p, modified_ram_size=%d)\n",
 			           ram_addr, read_ram_data, modified_ram_size );
@@ -553,7 +553,7 @@ int frizzdrv_frizz_fw_download( const char * firmware_path )
 }
 
 /**
- *  センサデータを読み出す
+ *  receive and analyze packet   
  */
 int frizzdrv_receive_packet( void )
 {
@@ -571,7 +571,7 @@ int frizzdrv_receive_packet( void )
 }
 
 /**
- * 指定されたsensor idをアクティベート/ディアクティベートする
+ * Activate/ deactivate sensor
  * sen_id: id of the sensor to activate/deactivate
  * enabled: D_FRIZZ_SENSOR_DEACTIVATE: disable the sensor
  *          D_FRIZZ_SENSOR_ACTIVATE:   enable the sensor
@@ -624,7 +624,7 @@ int frizzdrv_activate( libsensors_id_e sen_id, int enabled, int use_fifo, int us
 		if( ( rcv_packet.header.w == 0xFF84FF02 ) && ( rcv_packet.data[0] == packet.data[0] ) ) {
 			DBG_PRINT( "Receive Response!\n" );
 
-			// TODO: Responseの内容解析までは行っていない
+			// TODO: Parsing package
 			return D_RESULT_SUCCESS;
 		}
 	}
@@ -632,8 +632,8 @@ int frizzdrv_activate( libsensors_id_e sen_id, int enabled, int use_fifo, int us
 }
 
 /**
- * センサイベント発生時にGPIO割込みを行うようfrizzに設定する
- * gpio_num:   gpio番号(0～3)
+ * Activate the GPIO IRQ function of frizz (IRQ: frizz -> raspberry)
+ * gpio_num:   gpio number(0~3)
  * gpio_level: 0: Active High, !0: Avtive Low
  *
  */
@@ -686,7 +686,7 @@ int frizzdrv_set_setting( unsigned int gpio_num, int gpio_level )
 		if( ( rcv_packet.header.w == 0xFF84FF02 ) && ( rcv_packet.data[0] == packet.data[0] ) ) {
 			DBG_PRINT( "Receive Response!\n" );
 
-			// TODO: Responseの内容解析までは行っていない
+			// TODO: Parsing package
 			return D_RESULT_SUCCESS;
 		}
 	}
@@ -694,9 +694,9 @@ int frizzdrv_set_setting( unsigned int gpio_num, int gpio_level )
 }
 
 /**
- *  verレジスタを読み出す
- *  成功した場合はverの値を返す。
- *  失敗した場合は-1を返す。
+ *  Get frizz version number from register 
+ *  return value: version number (sucess)
+ *                      -1       (failed)
  */
 int frizzdrv_read_ver_reg( void )
 {

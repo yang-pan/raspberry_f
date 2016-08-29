@@ -11,14 +11,14 @@
 #include <stdio.h>
 #include "common.h"
 
-// デバッグ用メッセージ出力
+// Debug message
 #ifdef D_DBG_PRINT_ENABLE
 #define DBG_PRINT(...)	printf("%s(%d): ", __func__, __LINE__); printf(__VA_ARGS__)
 #else
 #define DBG_PRINT(...)
 #endif
 
-// エラー用メッセージ出力
+// Err message
 #ifdef D_DBG_ERR_ENABLE
 #define DBG_ERR(...)	fprintf(stderr, "[ERR] %s(%d): ", __func__, __LINE__); fprintf(stderr, __VA_ARGS__)
 #else
@@ -26,7 +26,7 @@
 #endif
 
 /**
- * エンディアン変換(4byte)
+ * convert edian(4byte)
  */
 void common_changeEndian( unsigned int* src )
 {
@@ -47,7 +47,7 @@ void common_changeEndian( unsigned int* src )
 }
 
 /**
- * スレッド間インタフェース情報画面出力
+ * print thread I/F info
  */
 void common_print_pipe( thread_if_t *thif )
 {
@@ -60,7 +60,7 @@ void common_print_pipe( thread_if_t *thif )
 }
 
 /**
- * イベント内容画面出力
+ * print event info
  */
 void common_print_event( thread_event_t *ev )
 {

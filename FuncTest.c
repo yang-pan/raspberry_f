@@ -22,14 +22,14 @@
 #include "sensor_buff.h"
 #include "SD_Writer.h"
 
-// デバッグ用メッセージ出力
+// Debug message
 #ifdef D_DBG_PRINT_ENABLE
 #define DBG_PRINT(...)	printf("%s(%d): ", __func__, __LINE__); printf(__VA_ARGS__)
 #else
 #define DBG_PRINT(...)
 #endif
 
-// エラー用メッセージ出力
+// Err message
 #ifdef D_DBG_ERR_ENABLE
 #define DBG_ERR(...)	fprintf(stderr, "[NG] %s(%d): ", __func__, __LINE__); fprintf(stderr, __VA_ARGS__)
 #else
