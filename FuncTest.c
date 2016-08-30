@@ -355,7 +355,7 @@ void test_frizz_driver( void )
 	D_CHECK_RESULT_INT_EQ( n++, ret, D_RESULT_SUCCESS );
 
 	// バージョンレジスタ読み出し
-	ret = frizzdrv_read_ver_reg();
+	ret = frizzdrv_get_frizz_version();
 	D_CHECK_RESULT_INT_EQ( n++, ret, 0x00000200 );
 
 	// ファームウェアダウンロード
@@ -370,34 +370,34 @@ void test_frizz_driver( void )
 
 	// GPIOによる通知を有効化(GPIO 1, Active Low)
 	pre_int_cnt = int_cnt;
-	ret = frizzdrv_set_setting(D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW);
+	ret = frizzdrv_set_gpio_irq(D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW);
 	D_CHECK_RESULT_INT_EQ( n++, ret, D_RESULT_SUCCESS );
 
 	// センサアクティベート(加速度)
-	ret = frizzdrv_activate(SENSOR_ID_ACCEL_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT);
+	ret = frizzdrv_set_sensor_active(SENSOR_ID_ACCEL_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT);
 	D_CHECK_RESULT_INT_EQ( n++, ret, D_RESULT_SUCCESS );
 
 	// センサアクティベート(ジャイロ)
-	ret = frizzdrv_activate(SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT);
+	ret = frizzdrv_set_sensor_active(SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT);
 	D_CHECK_RESULT_INT_EQ( n++, ret, D_RESULT_SUCCESS );
 
 	// センサアクティベート(ecompass)
-	ret = frizzdrv_activate(SENSOR_ID_MAGNET_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT);
+	ret = frizzdrv_set_sensor_active(SENSOR_ID_MAGNET_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT);
 	D_CHECK_RESULT_INT_EQ( n++, ret, D_RESULT_SUCCESS );
 
 	// センサアクティベート(Pressure)
-	ret = frizzdrv_activate(SENSOR_ID_PRESSURE_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT);
+	ret = frizzdrv_set_sensor_active(SENSOR_ID_PRESSURE_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT);
 	D_CHECK_RESULT_INT_EQ( n++, ret, D_RESULT_SUCCESS );
 	
 	// センサアクティベート(ECG)
-	ret = frizzdrv_activate(SENSOR_ID_ECG_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT);
+	ret = frizzdrv_set_sensor_active(SENSOR_ID_ECG_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT);
 	D_CHECK_RESULT_INT_EQ( n++, ret, D_RESULT_SUCCESS );
 
 	// ポーリングでセンサデータを受信(100回割込みを受けたら終了する)
 	while(int_cnt < 1000)
 	{
 		if(int_cnt != pre_int_cnt ){
-			frizzdrv_receive_packet();
+			frizzdrv_polling();
 			pre_int_cnt = int_cnt;
 //			printf("int_cnt:%d\n", int_cnt);
 		}

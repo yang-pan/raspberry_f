@@ -85,7 +85,7 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
 	}
 
 	// Get frizz's version info
-	ver = frizzdrv_read_ver_reg();
+	ver = frizzdrv_get_frizz_version();
 	DBG_PRINT( "frizz version      : 0x%08x\n", ver );
 	if( ver != D_FRIZZ_CHIPID ) {
 		DBG_ERR( "reading frizz ver register failed\n" );
@@ -111,7 +111,7 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
 	wiringPiISR( D_RPI_GPIO_IRQ_PIN, INT_EDGE_FALLING, gpio_irq_handler );
 
 	// GPIO IRQ setting(GPIO 1, Active Low) -- frizz side
-	ret = frizzdrv_set_setting( D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW );
+	ret = frizzdrv_set_gpio_irq( D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "frizz GPIO setting failed\n" );
 		return D_RESULT_ERROR;
@@ -140,6 +140,8 @@ void *frizzctrl_main( void *arg )
 {
 	int ret;
 	thread_event_t ev;
+	int command_parm[FRIZZ_PACKET_DATA_MAX];
+	
 	DBG_PRINT( "frizz controller thread: start\n" );
 
 	//-------------------------------------------------------------------------
@@ -170,32 +172,46 @@ void *frizzctrl_main( void *arg )
 	// (accrometer)
 	ret = frizzdrv_set_sensor_interval( SENSOR_ID_ACCEL_RAW, 1000, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "activate acc failed\n" );
+		DBG_ERR( "set acc interval failed\n" );
 		exit( EXIT_FAILURE );
 	}
 	// Activate sensors
-	ret = frizzdrv_activate( SENSOR_ID_ACCEL_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+	ret = frizzdrv_set_sensor_active( SENSOR_ID_ACCEL_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate acc failed\n" );
 		exit( EXIT_FAILURE );
 	}
 #if 0
 	// gyro
-	ret = frizzdrv_activate( SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+	ret = frizzdrv_set_sensor_active( SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate gyro failed\n" );
 		exit( EXIT_FAILURE );
 	}
+#endif
 
 	// compress
-	ret = frizzdrv_activate( SENSOR_ID_MAGNET_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+	ret = frizzdrv_set_sensor_interval( SENSOR_ID_MAGNET_RAW, 1000, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "set ecompress interval failed\n" );
+		exit( EXIT_FAILURE );
+	}
+	// Activate sensors
+	ret = frizzdrv_set_sensor_active( SENSOR_ID_MAGNET_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate ecompass failed\n" );
 		exit( EXIT_FAILURE );
 	}
-
+	
+	ret = frizzdrv_send_sensor_command( SENSOR_ID_MAGNET_RAW, SENSOR_GET_VERSION, 1, &command_parm );
+	
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "get ecompass version failed\n" );
+		exit( EXIT_FAILURE );
+	}
+#if 0
 	// pressure
-	ret = frizzdrv_activate( SENSOR_ID_PRESSURE_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+	ret = frizzdrv_set_sensor_active( SENSOR_ID_PRESSURE_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate pressure failed\n" );
 		exit( EXIT_FAILURE );
@@ -227,7 +243,7 @@ void *frizzctrl_main( void *arg )
 			} while( fds[0].revents & POLLIN );
 
 			// read sensor data if GPIO IRQ happend
-			while( frizzdrv_receive_packet() == D_RESULT_SUCCESS );
+			while( frizzdrv_polling() == D_RESULT_SUCCESS );
 			fds[0].revents = 0;
 		}
 		// Message from Main thread
@@ -239,7 +255,7 @@ void *frizzctrl_main( void *arg )
 #else
 	while( 1 )
 	{
-		frizzdrv_receive_packet();
+		frizzdrv_polling();
 	}
 #endif
 
