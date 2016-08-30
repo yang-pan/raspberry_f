@@ -167,14 +167,19 @@ void *frizzctrl_main( void *arg )
 	}
 
 	//-------------------------------------------------------------------------
-	// Activate sensors
 	// (accrometer)
+	ret = frizzdrv_set_sensor_interval( SENSOR_ID_ACCEL_RAW, 1000, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "activate acc failed\n" );
+		exit( EXIT_FAILURE );
+	}
+	// Activate sensors
 	ret = frizzdrv_activate( SENSOR_ID_ACCEL_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate acc failed\n" );
 		exit( EXIT_FAILURE );
 	}
-
+#if 0
 	// gyro
 	ret = frizzdrv_activate( SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
@@ -195,7 +200,7 @@ void *frizzctrl_main( void *arg )
 		DBG_ERR( "activate pressure failed\n" );
 		exit( EXIT_FAILURE );
 	}
-
+#endif
 #ifdef D_USE_GPIO_IRQ
 	struct pollfd fds[2];
 

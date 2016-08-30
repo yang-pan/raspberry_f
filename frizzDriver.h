@@ -41,6 +41,17 @@ int frizzdrv_receive_packet( void );
 #define D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT		(1) // use_int: output with interrupt signal
 int frizzdrv_activate( libsensors_id_e sen_id, int enabled, int use_fifo, int use_int );
 
+
+/**
+ * Set update time interval of sensor 
+ * sen_id: id of the sensor to activate/deactivate
+ * use_fifo:   
+ * use_int:
+ */
+int frizzdrv_set_sensor_interval( libsensors_id_e sen_id, int interval, int use_fifo, int use_int );
+
+
+
 /**
  * Activate the GPIO IRQ function of frizz (IRQ: frizz -> raspberry)
  * gpio_num:   gpio number (0~3)

@@ -588,14 +588,14 @@ int frizzdrv_activate( libsensors_id_e sen_id, int enabled, int use_fifo, int us
 			return D_RESULT_ERROR;
 		}
 		/*
-				{
-					int i;
-					DBG_PRINT( "header: num:%d, sen_id:0x%02x, type:0x%02x, prefix:0x%02x \n",
-					           rcv_packet.header.num, rcv_packet.header.sen_id, rcv_packet.header.type, rcv_packet.header.prefix );
-					for( i = 0; i < rcv_packet.header.num; i++ ) {
-						DBG_PRINT( "data[%d]=0x%08x\n", i, rcv_packet.data[i] );
-					}
-				}
+		{
+			int i;
+			DBG_PRINT( "header: num:%d, sen_id:0x%02x, type:0x%02x, prefix:0x%02x \n",
+			           rcv_packet.header.num, rcv_packet.header.sen_id, rcv_packet.header.type, rcv_packet.header.prefix );
+			for( i = 0; i < rcv_packet.header.num; i++ ) {
+				DBG_PRINT( "data[%d]=0x%08x\n", i, rcv_packet.data[i] );
+			}
+		}
 		*/
 		if( ( rcv_packet.header.w == 0xFF84FF02 ) && ( rcv_packet.data[0] == packet.data[0] ) ) {
 			DBG_PRINT( "Receive Response!\n" );
@@ -605,6 +605,60 @@ int frizzdrv_activate( libsensors_id_e sen_id, int enabled, int use_fifo, int us
 		}
 	}
 	return D_RESULT_ERROR;
+}
+
+/**
+ * Set update time interval of sensor 
+ * sen_id: id of the sensor to activate/deactivate
+ * use_fifo: fifo selection 
+ * use_int:  IRQ setting(frizz->raspberry)   
+ */
+int frizzdrv_set_sensor_interval( libsensors_id_e sen_id, int interval, int use_fifo, int use_int )
+{
+	frizz_packet_t packet; 
+	frizz_packet_t rcv_packet;
+	int ret;
+	// Make activate packet
+	packet.header.num = 2;
+	packet.header.sen_id = HUB_MGR_ID;	
+	packet.header.type = 0x81;
+	packet.header.prefix = 0xFF;
+	packet.data[0] = HUB_MGR_GEN_CMD_CODE( HUB_MGR_CMD_SET_SENSOR_INTERVAL, sen_id, ( 0xFF & use_fifo ), ( 0xFF & use_int ) );
+	packet.data[1] = interval;
+	// Send Packet
+	if( send_packet( &packet ) != D_RESULT_SUCCESS ) {
+		DBG_ERR( "send packet failed\n" );
+		return D_RESULT_ERROR;
+	}
+	
+		// Waiting for Response from frizz.
+	while( 1 ) {
+		if( frizz_get_cnr() <= 0 ) {
+			usleep( 1 );
+			continue;
+		}
+		ret = frizz_receive_packet( &rcv_packet );
+		if( ret != D_RESULT_SUCCESS ) {
+			DBG_ERR( "serial write failed: rcv_packet.header.w=0x%08x\n", rcv_packet.header.w );
+			return D_RESULT_ERROR;
+		}
+		// dump packet
+		{
+			int i;
+			DBG_PRINT( "header: num:%d, sen_id:0x%02x, type:0x%02x, prefix:0x%02x \n",
+			           rcv_packet.header.num, rcv_packet.header.sen_id, rcv_packet.header.type, rcv_packet.header.prefix );
+			for( i = 0; i < rcv_packet.header.num; i++ ) {
+				DBG_PRINT( "data[%d]=0x%08x\n", i, rcv_packet.data[i] );
+			}
+		}
+		if( ( rcv_packet.header.w == 0xFF84FF02 ) && ( rcv_packet.data[0] == packet.data[0] ) ) {
+			DBG_PRINT( "Receive Response!\n" );
+
+			// TODO: Parsing package
+			return D_RESULT_SUCCESS;
+		}
+	}
+
 }
 
 /**
