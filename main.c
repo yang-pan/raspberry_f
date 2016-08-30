@@ -18,7 +18,6 @@
 
 #include "common.h"
 #include "frizzController.h"
-#include "SD_Writer.h"
 
 // Debug message
 #ifdef D_DBG_PRINT_ENABLE
@@ -40,9 +39,7 @@
 #define D_INPUT_BUFF_SIZE	(256)
 
 static frizzCntrollerArg *frzzCtrlArg;
-static sdWriterArg *sdArg;
 
-//static int init_ThreadAttr( pthread_attr_t *attr_thread, size_t stacksize, int prioryty )
 static int init_ThreadAttr( pthread_attr_t *attr_thread, int prioryty )
 {
 	int		ret;
@@ -106,12 +103,6 @@ static int sendEvent( ThreadIdx_e thidx, thread_event_t* ev )
 			return D_RESULT_ERROR;
 		}
 		break;
-	case THREAD_SD_WRITER:
-		if( write( sdArg->thif.pipe_in[D_PIPE_W], ev, sizeof( thread_event_t ) ) <= 0 ) {
-			DBG_ERR( "write error: %s\n", strerror( errno ) );
-			return D_RESULT_ERROR;
-		}
-		break;
 	default:
 		break;
 	}
@@ -123,24 +114,11 @@ static int sendEvent( ThreadIdx_e thidx, thread_event_t* ev )
 int main( int argc, char **argv )
 {
 	pthread_t th_frizzctrl;
-	pthread_t th_sdwriter;
 	pthread_attr_t attr;
 	thread_event_t	ev;
 	char inbuff[D_INPUT_BUFF_SIZE];
 
-	DBG_PRINT( "--- ECG_log: start ---\n" );
-
-	//-------------------------------------------------------------------------
-	// Get log file's name from argument
-	//-------------------------------------------------------------------------
-	if( argc != 2 ) {
-		DBG_ERR( "Usage) %s <logfile_path>\n", argv[0] );
-		exit( EXIT_FAILURE );
-	}
-	if( strlen( argv[1] ) > ( PATH_MAX - 1 ) ) {
-		DBG_ERR( "logfile path is too long\n" );
-		exit( EXIT_FAILURE );
-	}
+	DBG_PRINT( "--- Frizz Sample program: start ---\n" );
 
 	//-------------------------------------------------------------------------
 	// Start the frizz Controller Thread 
@@ -185,39 +163,6 @@ int main( int argc, char **argv )
 	}
 	DBG_PRINT( "frizz Controller start finished\n" );
 
-	//-------------------------------------------------------------------------
-	// Start the SD Writer Thread 
-	//-------------------------------------------------------------------------
-	DBG_PRINT( "Create SD Writer thread\n" );
-	// Malloc memory
-	sdArg = malloc( sizeof( sdWriterArg ) );
-	if( sdArg == NULL ) {
-		DBG_ERR( "malloc error\n" );
-		exit( EXIT_FAILURE );
-	}
-	pipe( sdArg->thif.pipe_in );
-	pipe( sdArg->thif.pipe_out );
-
-	// Be careful because have no err check here. 
-	strncpy( sdArg->log_file_path, argv[1], sizeof( sdArg->log_file_path ) );
-	sdArg->log_file_path[sizeof( sdArg->log_file_path ) - 1] = 0;
-
-	if( pthread_create( &th_sdwriter, NULL, sdWriter_main, sdArg ) != 0 ) {
-		DBG_ERR( "pthread_create() error\n" );
-		exit( EXIT_FAILURE );
-	}
-	// Wait SD Writer thread start 
-	memset( &ev, 0, sizeof( ev ) );
-	if( read( sdArg->thif.pipe_out[D_PIPE_R], &ev, sizeof( ev ) ) < 0 ) {
-		DBG_ERR( "read error\n" );
-		exit( EXIT_FAILURE );
-	}
-	if( ev.id != EVENT_INITIALIZE_DONE ) {
-		DBG_ERR( "SD Writer initialize failed\n" );
-		exit( EXIT_FAILURE );
-	}
-	DBG_PRINT( "SD Writer start finished\n" );
-
 	// wait 1 second to avoid console conflict with other thread 
 	sleep( 1 );
 
@@ -230,7 +175,6 @@ int main( int argc, char **argv )
 			memset( &ev, 0, sizeof( ev ) );
 			ev.id = EVENT_FINISH_THREAD;
 			sendEvent( THREAD_FRIZZ_CONTROLLER, &ev );
-			sendEvent( THREAD_SD_WRITER, &ev );
 			break;
 #else
 			exit( EXIT_SUCCESS );
@@ -240,8 +184,8 @@ int main( int argc, char **argv )
 
 	DBG_PRINT( "Waiting for finishing all threads\n" );
 	pthread_join( th_frizzctrl, NULL ); /*Wait until thread_func() been killed*/
-	pthread_join( th_sdwriter, NULL ); /*Wait undtil thread_func() been killed*/
+	//pthread_join( th_sdwriter, NULL ); /*Wait undtil thread_func() been killed*/
 
-	DBG_PRINT( "--- ECG_log: end ---\n" );
+	DBG_PRINT( "--- Frizz Sample program: end ---\n" );
 	return 0;
 }

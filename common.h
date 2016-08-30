@@ -35,7 +35,6 @@
 typedef enum {
     THREAD_MAIN = 0,			// Main Thread
     THREAD_FRIZZ_CONTROLLER,	// frizz controller
-    THREAD_SD_WRITER,			// SD Writer
     THREAD_NUM,
 } ThreadIdx_e;
 

@@ -285,11 +285,10 @@ static int frizz_receive_packet( frizz_packet_t *packet )
  */
 static int analyze_packet( frizz_packet_t *packet )
 {
-	sensor_data_t *pSensorData;
-	struct timeval tv;
-	int idx, i;
-//#define D_PRINT_ANALIZE_PACKET
+#define D_PRINT_ANALIZE_PACKET
 #ifdef D_PRINT_ANALIZE_PACKET
+	int i;
+    if( D_IS_SENSOR_DATA( packet ) )
 	{
 		unsigned char *p;
 		DBG_PRINT( " header: num:%d, sen_id:0x%02x, type:0x%02x, prefix:0x%02x data: ",
@@ -301,29 +300,6 @@ static int analyze_packet( frizz_packet_t *packet )
 		printf( "\n" );
 	}
 #endif
-
-	// send to SD Writer if get sensor data
-	if( D_IS_SENSOR_DATA( packet ) ) {
-		idx = senbuff_alloc( &pSensorData );
-		//		DBG_PRINT( "idx:%d, pSensorData:%p\n", idx, pSensorData );
-		if( ( idx == -1 ) || ( pSensorData == NULL ) ) {
-			DBG_ERR( "allocating sensor buff failed\n" );
-			senbuff_free( idx );
-			return D_RESULT_ERROR;
-		}
-		// save timestamp when get data from frizz ‚(comment out because it's too heavy)
-		//		gettimeofday( &tv, NULL );
-		tv.tv_sec = 0;
-		tv.tv_usec = 0;
-		pSensorData->code = packet->header.w;
-		pSensorData->time = tv;
-		pSensorData->frizz_ms = packet->data[0];
-		for( i = 1; i < packet->header.num; i++ ) {
-			pSensorData->f32_value[i - 1] = packet->data[i];
-		}
-		writeDataToTheMedia( idx );
-	}
-
 	return D_RESULT_SUCCESS;
 }
 
