@@ -355,7 +355,7 @@ void test_frizz_driver( void )
 	D_CHECK_RESULT_INT_EQ( n++, ret, D_RESULT_SUCCESS );
 
 	// バージョンレジスタ読み出し
-	ret = frizzdrv_get_frizz_version();
+	ret = frizzdrv_get_ver_reg();
 	D_CHECK_RESULT_INT_EQ( n++, ret, 0x00000200 );
 
 	// ファームウェアダウンロード
@@ -370,7 +370,7 @@ void test_frizz_driver( void )
 
 	// GPIOによる通知を有効化(GPIO 1, Active Low)
 	pre_int_cnt = int_cnt;
-	ret = frizzdrv_set_gpio_irq(D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW);
+	ret = frizzdrv_set_setting(D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW);
 	D_CHECK_RESULT_INT_EQ( n++, ret, D_RESULT_SUCCESS );
 
 	// センサアクティベート(加速度)

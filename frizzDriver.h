@@ -46,7 +46,7 @@
 #define D_PACKET_NACK	(0xFF83FF00)	// Nack Packet
 
 #define FRIZZ_PACKET_DATA_MAX (64)
-#define D_IS_SENSOR_DATA(p)	((p->header.type == 0x80) && (p->header.prefix == 0xFF))
+#define D_IS_SENSOR_DATA(p)	((p.header.type == 0x80) && (p.header.prefix == 0xFF))
 #define D_TV2USEC(t)	(t.tv_sec * 1000000 + t.tv_usec)
 
 typedef union {
@@ -70,10 +70,30 @@ typedef struct {
 	unsigned int buff[FRIZZ_PACKET_DATA_MAX];
 } fifo_queue_t;
 
+
+int frizzdrv_stall_frizz( void );
+
+int frizzdrv_run_frizz( void );
+
+int frizzdrv_reset_frizz( void );
+
+/**
+ *  Get frizz version number from register 
+ *  return value: version number (sucess)
+ *                      -1       (failed)
+ */
+int frizzdrv_get_ver_reg( void );
+
 /**
  *  Write firmware into frizz's I-ram 
  */
 int frizzdrv_frizz_fw_download(const char* firmware_path );
+/**
+ * Get packet from frizz
+ * return value: D_RESULT_SUCCESS
+ *               D_RESULT_ERROR
+ */
+int frizzdrv_receive_packet( frizz_packet_t *packet );
 
 /**
  *  Get data packet from frizz
@@ -121,13 +141,8 @@ int frizzdrv_set_sensor_interval( libsensors_id_e sen_id, int interval, int use_
 #define D_FRIZZ_GPIO_INT_NUM_3	(3)	// gpio_num: use gpio number 3 for interrupt
 #define D_FRIZZ_INT_ACTIVE_HIGH	(0)	// gpio_level: Low before generate edge
 #define D_FRIZZ_INT_ACTIVE_LOW	(1) // gpio_level: High before genearate edge
-int frizzdrv_set_gpio_irq( unsigned int gpio_num, int gpio_level );
+int frizzdrv_set_setting( unsigned int gpio_num, int gpio_level );
 
-/**
- *  Get frizz version number from register 
- *  return value: version number (sucess)
- *                      -1       (failed)
- */
-int frizzdrv_get_frizz_version( void );
+
 
 #endif // __SENSOR_BUFF_H__

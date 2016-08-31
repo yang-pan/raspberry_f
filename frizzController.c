@@ -85,7 +85,7 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
 	}
 
 	// Get frizz's version info
-	ver = frizzdrv_get_frizz_version();
+	ver = frizzdrv_get_ver_reg();
 	DBG_PRINT( "frizz version      : 0x%08x\n", ver );
 	if( ver != D_FRIZZ_CHIPID ) {
 		DBG_ERR( "reading frizz ver register failed\n" );
@@ -111,7 +111,7 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
 	wiringPiISR( D_RPI_GPIO_IRQ_PIN, INT_EDGE_FALLING, gpio_irq_handler );
 
 	// GPIO IRQ setting(GPIO 1, Active Low) -- frizz side
-	ret = frizzdrv_set_gpio_irq( D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW );
+	ret = frizzdrv_set_setting( D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "frizz GPIO setting failed\n" );
 		return D_RESULT_ERROR;
@@ -183,20 +183,23 @@ void *frizzctrl_main( void *arg )
 	}
 	
 	ret = frizzdrv_send_sensor_command( SENSOR_ID_ACCEL_RAW, SENSOR_GET_VERSION, 1, &command_parm );
-	
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "get ecompass version failed\n" );
 		exit( EXIT_FAILURE );
 	}
 	
-#if 0
 	// gyro
+	ret = frizzdrv_set_sensor_interval( SENSOR_ID_GYRO_RAW, 1000, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "set gyro interval failed\n" );
+		exit( EXIT_FAILURE );
+	}
+
 	ret = frizzdrv_set_sensor_active( SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "activate gyro failed\n" );
 		exit( EXIT_FAILURE );
 	}
-
 
 	// compress
 	ret = frizzdrv_set_sensor_interval( SENSOR_ID_MAGNET_RAW, 1000, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
@@ -211,13 +214,8 @@ void *frizzctrl_main( void *arg )
 		exit( EXIT_FAILURE );
 	}
 	
-	// pressure
-	ret = frizzdrv_set_sensor_active( SENSOR_ID_PRESSURE_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "activate pressure failed\n" );
-		exit( EXIT_FAILURE );
-	}
-#endif
+	
+
 #ifdef D_USE_GPIO_IRQ
 	struct pollfd fds[2];
 

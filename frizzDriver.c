@@ -58,49 +58,7 @@ static void print_packet( frizz_packet_t *packet )
     }
     printf( "\n" );
 }
-/**
- *  set frizz RESET/STALL
- */
-static int frizz_hardware_stall( void )
-{
-	int ret;
-	DBG_PRINT( "frizz RESET/STALL start\n" );
-	ret = serial_write_reg_32( D_FRIZZ_REG_ADDR_CTRL, D_FRIZZ_CTRL_SYSTEM_RESET );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "writing reset command to ctrl reg failed\n" );
-		return D_RESULT_ERROR;
-	}
-	usleep( 100 * 1000 ); // 100ms
-	ret = serial_write_reg_32( D_FRIZZ_REG_ADDR_CTRL, D_FRIZZ_CTRL_STALL );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "writing stall command to ctrl reg failed\n" );
-		return D_RESULT_ERROR;
-	}
-	DBG_PRINT( "frizz RESET/STALL done\n" );
-	return D_RESULT_SUCCESS;
-}
 
-/**
- *  set frizz RESET/RUN
- */
-static int frizz_hardware_reset( void )
-{
-	int ret;
-	DBG_PRINT( "frizz RESET/RUN start\n" );
-	ret = serial_write_reg_32( D_FRIZZ_REG_ADDR_CTRL, D_FRIZZ_CTRL_SYSTEM_RESET );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "writing reset command to ctrl reg failed\n" );
-		return D_RESULT_ERROR;
-	}
-	usleep( 100 * 1000 ); // 100ms
-	ret = serial_write_reg_32( D_FRIZZ_REG_ADDR_CTRL, D_FRIZZ_CTRL_RUN );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "writing run command to ctrl reg failed\n" );
-		return D_RESULT_ERROR;
-	}
-	DBG_PRINT( "frizz RESET/RUN end\n" );
-	return D_RESULT_SUCCESS;
-}
 
 /**
  *  read cnr
@@ -224,37 +182,6 @@ static int frizz_read_ram( unsigned int ram_addr, unsigned char *read_buff, unsi
 }
 
 /**
- * Get packet from frizz
- * return value: D_RESULT_SUCCESS
- *               D_RESULT_ERROR
- */
-static int get_packet( frizz_packet_t *packet )
-{
-	//#define D_PRINT_RECEIVE_PACKET
-	unsigned int rcv;
-	int i;
-	// Receive header of packet
-	if( frizz_get_fifo( &rcv ) != D_RESULT_SUCCESS ) {
-		return D_RESULT_ERROR;
-	}
-	packet->header.w = rcv;
-#ifdef D_PRINT_RECEIVE_PACKET
-	DBG_PRINT( "header: num:%d, sen_id:0x%02x, type:0x%02x, prefix:0x%02x \n",
-	           packet->header.num, packet->header.sen_id, packet->header.type, packet->header.prefix );
-#endif
-	for( i = 0; i < packet->header.num; i++ ) {
-		if( frizz_get_fifo( &rcv ) != D_RESULT_SUCCESS ) {
-			return D_RESULT_ERROR;
-		}
-		packet->data[i] = rcv;
-#ifdef D_PRINT_RECEIVE_PACKET
-		DBG_PRINT( "data[%2d]: 0x%08x\n", i, packet->data[i] );
-#endif
-	}
-	return D_RESULT_SUCCESS;
-}
-
-/**
  * polling packet ( frizz->raspberry )
  * timeout_ms:  time out value 
  * sensor_id:   specify polling target ( HUB_MAG / sensor)
@@ -271,7 +198,7 @@ static int polling_command_packet( int timeout_ms, int sensor_id, int packet_typ
 
     while( timeout_ms > 0 ) {
         if( frizz_get_cnr() > 0 ) {
-            ret = get_packet( &rcv_packet );
+            ret = frizzdrv_receive_packet( &rcv_packet );
             if( ret != D_RESULT_SUCCESS ) {
                 DBG_ERR( "packet receive failed\n" );
                 return D_RESULT_ERROR;
@@ -361,10 +288,19 @@ static int frizz_fw_download( int frizz_fp )
 	fifo_q.curr = 0;
 	memset( fifo_q.buff, 0, sizeof( fifo_q.buff ) );
 
-	// RESET/STALL
-	ret = frizz_hardware_stall();
+	// RESET
+	ret = frizzdrv_reset_frizz();
 	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "writing reset command to ctrl reg failed\n" );
+		DBG_ERR( "RESET frizz failed\n" );
+		return D_RESULT_ERROR;
+	}
+	
+	usleep( 100 * 1000 ); // 100ms
+	
+	// STALL
+	ret = frizzdrv_stall_frizz();
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "STALL failed\n" );
 		return D_RESULT_ERROR;
 	}
 
@@ -426,14 +362,88 @@ static int frizz_fw_download( int frizz_fp )
 		}
 	} while( read_file_size != 0 );
 
-	// RESET/RUN
-	ret = frizz_hardware_reset();
+	// RESET
+	ret = frizzdrv_reset_frizz();
 	if( ret != D_RESULT_SUCCESS ) {
 		DBG_ERR( "frizz hardware reset failed\n" );
 		return D_RESULT_ERROR;
 	}
+	
+	usleep( 100 * 1000 ); // 100ms
+	
+	// RUN
+	ret = frizzdrv_run_frizz();
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "frizz hardware start failed\n" );
+        return D_RESULT_ERROR;
+    }
 
 	return D_RESULT_SUCCESS;
+}
+
+// for LSI 
+/**
+ *  set frizz STALL
+ */
+int frizzdrv_stall_frizz( void )
+{
+	int ret;
+	DBG_PRINT( "frizz STALL \n" );
+	ret = serial_write_reg_32( D_FRIZZ_REG_ADDR_CTRL, D_FRIZZ_CTRL_STALL );
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "writing stall command to ctrl reg failed\n" );
+		return D_RESULT_ERROR;
+	}
+	return D_RESULT_SUCCESS;
+}
+
+/**
+ *  set frizz RUN
+ */
+int frizzdrv_run_frizz( void )
+{
+    int ret;
+    DBG_PRINT( "frizz RUN \n" );
+	ret = serial_write_reg_32( D_FRIZZ_REG_ADDR_CTRL, D_FRIZZ_CTRL_RUN );
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "writing run command to ctrl reg failed\n" );
+		return D_RESULT_ERROR;
+	}
+	return D_RESULT_SUCCESS;
+}
+
+/**
+ *  set frizz RESET
+ */
+int frizzdrv_reset_frizz( void )
+{
+	int ret;
+	DBG_PRINT( "frizz RESET start\n" );
+	ret = serial_write_reg_32( D_FRIZZ_REG_ADDR_CTRL, D_FRIZZ_CTRL_SYSTEM_RESET );
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "writing reset command to ctrl reg failed\n" );
+		return D_RESULT_ERROR;
+	}
+	return D_RESULT_SUCCESS;
+}
+
+/**
+ *  Get frizz version number from register 
+ *  return value: version number (success)
+ *                D_RESULT_ERROR (failed)
+ */
+int frizzdrv_get_ver_reg( void )
+{
+	int ret;
+	unsigned int read_data;
+
+	read_data = 0;
+	ret = serial_read_reg_32( D_FRIZZ_REG_ADDR_VER, &read_data );
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "read ver register failed\n" );
+		return D_RESULT_ERROR;
+	}
+	return read_data;
 }
 
 /**
@@ -488,26 +498,33 @@ int frizzdrv_frizz_fw_download( const char * firmware_path )
 }
 
 /**
- *  Get data packet from frizz  
+ * Get packet from frizz
+ * return value: D_RESULT_SUCCESS
+ *               D_RESULT_ERROR
  */
-int frizzdrv_polling_data( void )
+int frizzdrv_receive_packet( frizz_packet_t *packet )
 {
-	int ret;
-	frizz_packet_t rcv_packet;
-	if( frizz_get_cnr() <= 0 ) {
+	//#define D_PRINT_RECEIVE_PACKET
+	unsigned int rcv;
+	int i;
+	// Receive header of packet
+	if( frizz_get_fifo( &rcv ) != D_RESULT_SUCCESS ) {
 		return D_RESULT_ERROR;
 	}
-	ret = get_packet( &rcv_packet );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "packet receive failed\n" );
-		return D_RESULT_ERROR;
+	packet->header.w = rcv;
+#ifdef D_PRINT_RECEIVE_PACKET
+	DBG_PRINT( "header: num:%d, sen_id:0x%02x, type:0x%02x, prefix:0x%02x \n",
+	           packet->header.num, packet->header.sen_id, packet->header.type, packet->header.prefix );
+#endif
+	for( i = 0; i < packet->header.num; i++ ) {
+		if( frizz_get_fifo( &rcv ) != D_RESULT_SUCCESS ) {
+			return D_RESULT_ERROR;
+		}
+		packet->data[i] = rcv;
+#ifdef D_PRINT_RECEIVE_PACKET
+		DBG_PRINT( "data[%2d]: 0x%08x\n", i, packet->data[i] );
+#endif
 	}
-	
-	if( D_IS_SENSOR_DATA( rcv_packet ) ) {
-    	DBG_PRINT( "Receive Data! " );
-    	print_packet(&rcv_packet);
-	}
-	
 	return D_RESULT_SUCCESS;
 }
 
@@ -524,36 +541,6 @@ int frizzdrv_send_frizz_packet( frizz_packet_t * packet )
 
 	// Waiting for Response from frizz.
 	return polling_command_packet(1000, packet->header.sen_id, D_PACKET_TYPE_RES);
-}
-
-/**
- * Send command to sensor
- */
-int frizzdrv_send_sensor_command( libsensors_id_e sen_id, int command, int parm_length, void *parm)
-{
-	frizz_packet_t packet;
-	int cnt;
-	
-	int *p = ( int* )parm;
-	
-	DBG_PRINT( "sen_id:0x%02x, parm_length:%d, parm_lenth:%d\n",
-	           sen_id, command, parm_length );
-	
-	if( parm_length > FRIZZ_PACKET_DATA_MAX ) {
-		DBG_ERR( "parm_length must less than %d\n",parm_length );
-		return D_RESULT_ERROR;
-	}
-	
-	// Make packet
-	packet.header.num = parm_length;
-	packet.header.sen_id = sen_id;
-	packet.header.type = 0x81;
-	packet.header.prefix = 0xFF;
-	packet.data[0] = HUB_MGR_GEN_CMD_CODE( command, sen_id, 0, 0 );
-	for( cnt = 1 ; cnt < parm_length; cnt ++ ){
-		packet.data[cnt] = p[cnt-1];
-	}
-	return frizzdrv_send_frizz_packet(&packet);
 }
 
 /**
@@ -608,7 +595,7 @@ int frizzdrv_set_sensor_interval( libsensors_id_e sen_id, int interval, int use_
  * gpio_level: 0: Active High, !0: Avtive Low
  *
  */
-int frizzdrv_set_gpio_irq( unsigned int gpio_num, int gpio_level )
+int frizzdrv_set_setting( unsigned int gpio_num, int gpio_level )
 {
 	frizz_packet_t packet;
 
@@ -630,20 +617,56 @@ int frizzdrv_set_gpio_irq( unsigned int gpio_num, int gpio_level )
 }
 
 /**
- *  Get frizz version number from register 
- *  return value: version number (success)
- *                D_RESULT_ERROR (failed)
+ * Send command to sensor
  */
-int frizzdrv_get_frizz_version( void )
+int frizzdrv_send_sensor_command( libsensors_id_e sen_id, int command, int parm_length, void *parm)
 {
-	int ret;
-	unsigned int read_data;
-
-	read_data = 0;
-	ret = serial_read_reg_32( D_FRIZZ_REG_ADDR_VER, &read_data );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "read ver register failed\n" );
+	frizz_packet_t packet;
+	int cnt;
+	
+	int *p = ( int* )parm;
+	
+	DBG_PRINT( "sen_id:0x%02x, parm_length:%d, parm_lenth:%d\n",
+	           sen_id, command, parm_length );
+	
+	if( parm_length > FRIZZ_PACKET_DATA_MAX ) {
+		DBG_ERR( "parm_length must less than %d\n",parm_length );
 		return D_RESULT_ERROR;
 	}
-	return read_data;
+	
+	// Make packet
+	packet.header.num = parm_length;
+	packet.header.sen_id = sen_id;
+	packet.header.type = 0x81;
+	packet.header.prefix = 0xFF;
+	packet.data[0] = HUB_MGR_GEN_CMD_CODE( command, sen_id, 0, 0 );
+	for( cnt = 1 ; cnt < parm_length; cnt ++ ){
+		packet.data[cnt] = p[cnt-1];
+	}
+	return frizzdrv_send_frizz_packet(&packet);
 }
+
+/**
+ *  Get data packet from frizz  
+ */
+int frizzdrv_polling_data( void )
+{
+	int ret;
+	frizz_packet_t rcv_packet;
+	if( frizz_get_cnr() <= 0 ) {
+		return D_RESULT_ERROR;
+	}
+	ret = frizzdrv_receive_packet( &rcv_packet );
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "packet receive failed\n" );
+		return D_RESULT_ERROR;
+	}
+	
+	if( D_IS_SENSOR_DATA( rcv_packet ) ) {
+    	DBG_PRINT( "Receive Data! " );
+    	print_packet(&rcv_packet);
+	}
+	
+	return D_RESULT_SUCCESS;
+}
+
