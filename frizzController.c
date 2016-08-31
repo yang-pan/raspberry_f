@@ -181,6 +181,14 @@ void *frizzctrl_main( void *arg )
 		DBG_ERR( "activate acc failed\n" );
 		exit( EXIT_FAILURE );
 	}
+	
+	ret = frizzdrv_send_sensor_command( SENSOR_ID_ACCEL_RAW, SENSOR_GET_VERSION, 1, &command_parm );
+	
+	if( ret != D_RESULT_SUCCESS ) {
+		DBG_ERR( "get ecompass version failed\n" );
+		exit( EXIT_FAILURE );
+	}
+	
 #if 0
 	// gyro
 	ret = frizzdrv_set_sensor_active( SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
@@ -188,7 +196,7 @@ void *frizzctrl_main( void *arg )
 		DBG_ERR( "activate gyro failed\n" );
 		exit( EXIT_FAILURE );
 	}
-#endif
+
 
 	// compress
 	ret = frizzdrv_set_sensor_interval( SENSOR_ID_MAGNET_RAW, 1000, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
@@ -203,13 +211,6 @@ void *frizzctrl_main( void *arg )
 		exit( EXIT_FAILURE );
 	}
 	
-	ret = frizzdrv_send_sensor_command( SENSOR_ID_MAGNET_RAW, SENSOR_GET_VERSION, 1, &command_parm );
-	
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "get ecompass version failed\n" );
-		exit( EXIT_FAILURE );
-	}
-#if 0
 	// pressure
 	ret = frizzdrv_set_sensor_active( SENSOR_ID_PRESSURE_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
 	if( ret != D_RESULT_SUCCESS ) {
@@ -243,7 +244,7 @@ void *frizzctrl_main( void *arg )
 			} while( fds[0].revents & POLLIN );
 
 			// read sensor data if GPIO IRQ happend
-			while( frizzdrv_polling() == D_RESULT_SUCCESS );
+			while( frizzdrv_polling_data() == D_RESULT_SUCCESS );
 			fds[0].revents = 0;
 		}
 		// Message from Main thread
@@ -255,7 +256,7 @@ void *frizzctrl_main( void *arg )
 #else
 	while( 1 )
 	{
-		frizzdrv_polling();
+		frizzdrv_polling_data();
 	}
 #endif
 

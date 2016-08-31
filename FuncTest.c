@@ -397,7 +397,7 @@ void test_frizz_driver( void )
 	while(int_cnt < 1000)
 	{
 		if(int_cnt != pre_int_cnt ){
-			frizzdrv_polling();
+			frizzdrv_polling_data();
 			pre_int_cnt = int_cnt;
 //			printf("int_cnt:%d\n", int_cnt);
 		}

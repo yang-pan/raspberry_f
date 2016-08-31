@@ -34,6 +34,14 @@
 #define D_FRIZZ_CTRL_SYSTEM_RESET 		(0x0001)
 #define D_FRIZZ_CTRL_STALL	  			(0x0002)
 
+#define D_PACKET_TYPE_SENSOR_DATA		(0x80)
+#define D_PACKET_TYPE_COMMAND			(0x81)
+#define D_PACKET_TYPE_ACK				(0x82)
+#define D_PACKET_TYPE_NACK				(0x83)
+#define D_PACKET_TYPE_RES				(0x84)
+#define D_PACKET_TYPE_BREAK_CODE		(0x8f)
+
+
 #define D_PACKET_ACK	(0xFF82FF00)	// Ack Packet
 #define D_PACKET_NACK	(0xFF83FF00)	// Nack Packet
 
@@ -68,9 +76,9 @@ typedef struct {
 int frizzdrv_frizz_fw_download(const char* firmware_path );
 
 /**
- *  Receive and analyze packet   
+ *  Get data packet from frizz
  */
-int frizzdrv_polling( void );
+int frizzdrv_polling_data( void );
 
 /**
  *  send packet to frizz   

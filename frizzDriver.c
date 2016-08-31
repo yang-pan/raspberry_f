@@ -42,6 +42,22 @@
 
 
 static fifo_queue_t fifo_q;
+
+/**
+ *   Print packet recevied success
+ */
+static void print_packet( frizz_packet_t *packet ) 
+{
+    unsigned char *p;
+    int i;
+    DBG_PRINT( "header.num:%d, sen_id:0x%02x, type:0x%02x, prefix:0x%02x data: ",
+    packet->header.num, packet->header.sen_id, packet->header.type, packet->header.prefix );
+    for( i = 0; i < packet->header.num; i++ ) {
+        p = ( unsigned char* )&packet->data[i];
+        printf( "%02X %02X %02X %02X ", *( p + 3 ), *( p + 2 ), *( p + 1 ), *( p + 0 ) );
+    }
+    printf( "\n" );
+}
 /**
  *  set frizz RESET/STALL
  */
@@ -239,75 +255,48 @@ static int get_packet( frizz_packet_t *packet )
 }
 
 /**
- *  analyze the package get from frizz
+ * polling packet ( frizz->raspberry )
+ * timeout_ms:  time out value 
+ * sensor_id:   specify polling target ( HUB_MAG / sensor)
+ * target_type: specify poliing packet type (ACK / NACK / RESPONSE) 
  */
-static int analyze_packet( frizz_packet_t *packet )
+static int polling_command_packet( int timeout_ms, int sensor_id, int packet_type )
 {
-	int i,output_flag;
-	output_flag = 0;
-	
-    if( D_IS_SENSOR_DATA( packet ) ) {
-    	DBG_PRINT( "Receive Data! " );
-    	output_flag++;
-	}
-	else if( packet->header.w == 0xFF84FF02 ) { 
-		DBG_PRINT( "Receive HUB_MANAGER Response! " );
-		output_flag++;
-	}
-	else if( (packet->header.w && 0xFFFF0000 ) == 0xFF840000 ){
-		DBG_PRINT( "Receive sensor Response! " );
-		output_flag++;
-	}
-	
-	if( output_flag !=0 ) {
-		unsigned char *p;
-		DBG_PRINT( "header.num:%d, sen_id:0x%02x, type:0x%02x, prefix:0x%02x data: ",
-		packet->header.num, packet->header.sen_id, packet->header.type, packet->header.prefix );
-		for( i = 0; i < packet->header.num; i++ ) {
-			p = ( unsigned char* )&packet->data[i];
-			printf( "%02X %02X %02X %02X ", *( p + 0 ), *( p + 1 ), *( p + 2 ), *( p + 3 ) );
-		}
-		printf( "\n" );
-	}
-	
-	return D_RESULT_SUCCESS;
-}
+    int tmp, ret;
+    frizz_packet_t rcv_packet;
 
-/**
- * wait ACK.
- * output the package recevied during the waitting time to screen
- * Throw timeout each 10ms if not get package
- */
-static int wait_ack( int timeout_ms )
-{
-	int tmp, ret;
-	frizz_packet_t rcv_packet;
+    // 10m
+    tmp = timeout_ms % 10;
+    timeout_ms -= tmp;
 
-	// 10m
-	tmp = timeout_ms % 10;
-	timeout_ms -= tmp;
-
-	while( timeout_ms > 0 ) {
-		if( frizz_get_cnr() > 0 ) {
-			ret = get_packet( &rcv_packet );
-			if( ret != D_RESULT_SUCCESS ) {
-				DBG_ERR( "packet receive failed\n" );
-				return D_RESULT_ERROR;
-			}
-			if( rcv_packet.header.w == D_PACKET_ACK ) {
-				DBG_PRINT( "Receive ACK\n" );
-				return D_RESULT_SUCCESS;
-			} else if( rcv_packet.header.w == D_PACKET_NACK ) {
+    while( timeout_ms > 0 ) {
+        if( frizz_get_cnr() > 0 ) {
+            ret = get_packet( &rcv_packet );
+            if( ret != D_RESULT_SUCCESS ) {
+                DBG_ERR( "packet receive failed\n" );
+                return D_RESULT_ERROR;
+            }
+            
+			if( ( rcv_packet.header.w & 0xFFFFFF00 ) == ( 0xFF840000 | (sensor_id << 8 ) ) ) { 
+				DBG_PRINT( "Receive Response(s_id=%x)!\n",sensor_id );
+				if( packet_type == D_PACKET_TYPE_RES ) { // response
+					print_packet(&rcv_packet);
+					return D_RESULT_SUCCESS;
+				}
+			}else if( rcv_packet.header.w == D_PACKET_ACK ) { // ack
+	 			DBG_PRINT( "Receive ACK\n" );
+	 			if( packet_type == D_PACKET_TYPE_ACK ) {
+	 				return D_RESULT_SUCCESS;
+	 			}
+			}else if( rcv_packet.header.w == D_PACKET_NACK ) { // nack
 				DBG_PRINT( "Receive NACK\n" );
 				return D_RESULT_ERROR;
-			} else {
-				analyze_packet( &rcv_packet );
 			}
-		}
-		usleep( 10 * 1000 ); // sleep 10ms
-		timeout_ms -= 10;
-	}
-	return D_RESULT_ERROR;
+        }
+        usleep( 10 * 1000 ); // sleep 10ms
+        timeout_ms -= 10;
+    }
+    return D_RESULT_ERROR;
 }
 
 /**
@@ -326,7 +315,7 @@ static int send_packet( const frizz_packet_t *packet )
 	}
 
 	// Waiting for ack from frizz. Timeout is 1000ms.
-	if( wait_ack( 1000 ) != D_RESULT_SUCCESS ) {
+	if( polling_command_packet( 1000, packet->header.sen_id, 0x82 ) != D_RESULT_SUCCESS ) {
 		DBG_ERR( "Can't receive ACK\n" );
 		return D_RESULT_ERROR;
 	}
@@ -341,7 +330,7 @@ static int send_packet( const frizz_packet_t *packet )
 			return D_RESULT_ERROR;
 		}
 		// Waiting for ack from frizz. Timeout is 1000ms.
-		if( wait_ack( 1000 ) != D_RESULT_SUCCESS ) {
+		if( polling_command_packet( 1000, packet->header.sen_id, 0x82 ) != D_RESULT_SUCCESS ) {
 			DBG_ERR( "Can't receive ACK\n" );
 			return D_RESULT_ERROR;
 		}
@@ -499,9 +488,9 @@ int frizzdrv_frizz_fw_download( const char * firmware_path )
 }
 
 /**
- *  Get and analyze packet   
+ *  Get data packet from frizz  
  */
-int frizzdrv_polling( void )
+int frizzdrv_polling_data( void )
 {
 	int ret;
 	frizz_packet_t rcv_packet;
@@ -513,7 +502,13 @@ int frizzdrv_polling( void )
 		DBG_ERR( "packet receive failed\n" );
 		return D_RESULT_ERROR;
 	}
-	return analyze_packet( &rcv_packet );
+	
+	if( D_IS_SENSOR_DATA( rcv_packet ) ) {
+    	DBG_PRINT( "Receive Data! " );
+    	print_packet(&rcv_packet);
+	}
+	
+	return D_RESULT_SUCCESS;
 }
 
 /**
@@ -521,8 +516,6 @@ int frizzdrv_polling( void )
  */
 int frizzdrv_send_frizz_packet( frizz_packet_t * packet )
 {
-	frizz_packet_t rcv_packet;
-	int ret;
 	// Send Packet
 	if( send_packet( packet ) != D_RESULT_SUCCESS ) {
 		DBG_ERR( "send packet failed\n" );
@@ -530,22 +523,7 @@ int frizzdrv_send_frizz_packet( frizz_packet_t * packet )
 	}
 
 	// Waiting for Response from frizz.
-	while( 1 ) {
-		if( frizz_get_cnr() <= 0 ) {
-			usleep( 1 );
-			continue;
-		}
-		ret = get_packet( &rcv_packet );
-		if( ret != D_RESULT_SUCCESS ) {
-			DBG_ERR( "serial write failed: rcv_packet.header.w=0x%08x\n", rcv_packet.header.w );
-			return D_RESULT_ERROR;
-		}
-		
-		if( rcv_packet.data[0] == packet->data[0] ) {
-			return analyze_packet( &rcv_packet );
-		}
-	}
-	return D_RESULT_ERROR;
+	return polling_command_packet(1000, packet->header.sen_id, D_PACKET_TYPE_RES);
 }
 
 /**
