@@ -23,7 +23,6 @@
 #include "common.h"
 #include "serial.h"
 #include "frizzDriver.h"
-#include "sensor_buff.h"
 
 // Debug message
 #ifdef D_DBG_PRINT_ENABLE

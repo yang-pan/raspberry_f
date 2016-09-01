@@ -19,7 +19,6 @@
 #include <errno.h>
 
 #include "common.h"
-#include "sensor_buff.h"
 #include "frizzController.h"
 #include "frizzDriver.h"
 #include "serial.h"
@@ -69,13 +68,6 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
 	pIfToMain = &arg->thif;
 	DBG_PRINT( "SPI device         : %s\n", arg->spi_dev_path );
 	DBG_PRINT( "frizz firmware path: %s\n", arg->frizz_firmware_path );
-
-	// initialize sensor buffer
-	ret = senbuff_init();
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "sensor buffer initialize failed\n" );
-		return D_RESULT_ERROR;
-	}
 
 	// initialize SPI
 	ret = serial_open( arg->spi_dev_path );

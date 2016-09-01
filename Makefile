@@ -1,6 +1,6 @@
 # Makefile
 
-OBJS = main.o frizzController.o common.o serial.o spi.o sensor_buff.o frizzDriver.o 
+OBJS = main.o frizzController.o common.o serial.o spi.o frizzDriver.o 
 CC = gcc
 TARGET = Sample_demo
 CFLAGS = -Wall -Werror -O2 -Iinc
