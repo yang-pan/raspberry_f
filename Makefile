@@ -1,21 +1,16 @@
 # Makefile
 
-OBJS = main.o frizzController.o common.o serial.o spi.o sensor_buff.o frizzDriver.o SD_Writer.o normal_sensor_writer.o bmd101_sensor_writer.o
-OBJS2 = FuncTest.o common.o serial.o spi.o sensor_buff.o frizzDriver.o SD_Writer.o normal_sensor_writer.o bmd101_sensor_writer.o
+OBJS = main.o frizzController.o common.o serial.o spi.o sensor_buff.o frizzDriver.o 
 CC = gcc
-TARGET = Sensor_log
-TARGET2 = FuncTest
+TARGET = Sample_demo
 CFLAGS = -Wall -Werror -O2 -Iinc
 INC_LIBS = -pthread -lwiringPi -lwiringPiDev
 .SUFFIXES: .c .o
 
 .PHONY: all
-all: $(TARGET) $(TARGET2)
+all: $(TARGET) 
 
 $(TARGET): $(OBJS)
-	$(CC) $(INC_LIBS) -o $@ $^ 
-
-$(TARGET2): $(OBJS2)
 	$(CC) $(INC_LIBS) -o $@ $^ 
 
 .c.o:
@@ -23,4 +18,4 @@ $(TARGET2): $(OBJS2)
 
 .PHONY: clean
 clean:
-	$(RM) $(TARGET) $(OBJS) $(TARGET2) $(OBJS2)
+	$(RM) $(TARGET) $(OBJS) 
