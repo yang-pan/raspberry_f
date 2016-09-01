@@ -59,6 +59,26 @@ static void print_packet( frizz_packet_t *packet )
     printf( "\n" );
 }
 
+static void print_sensor_data( frizz_packet_t *packet )
+{
+    unsigned char *p;
+	int i;
+	frizz_data_t data;
+	float data_out;
+	
+	for( i = 0; i < packet->header.num; i++ ) {
+		p = ( unsigned char* )&packet->data[i];
+		data.ui_val = ( *( p + 3 ) << 24 ) | ( *( p + 2 ) << 16 ) | ( *( p + 1 ) << 8 ) | ( *( p + 0 ) );
+		if( i == 0 ) {
+			printf( "sensor id = %x time stamp = %d ",packet->header.sen_id, data.ui_val);
+		}
+		else {
+			data_out = (double)data.f_val;
+			printf( "data_%d = %f ",i,data_out);
+		}
+	}
+    printf( "\n" );
+}
 
 /**
  *  read cnr
@@ -664,7 +684,7 @@ int frizzdrv_polling_data( void )
 	
 	if( D_IS_SENSOR_DATA( rcv_packet ) ) {
     	DBG_PRINT( "Receive Data! " );
-    	print_packet(&rcv_packet);
+    	print_sensor_data(&rcv_packet);
 	}
 	
 	return D_RESULT_SUCCESS;

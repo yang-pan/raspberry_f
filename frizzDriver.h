@@ -59,6 +59,11 @@ typedef union {
 	};
 } hubhal_format_header_t;
 
+typedef union {
+	unsigned int ui_val;
+	float f_val;
+} frizz_data_t;
+
 typedef struct {
 	hubhal_format_header_t header;
 	unsigned int data[FRIZZ_PACKET_DATA_MAX];
