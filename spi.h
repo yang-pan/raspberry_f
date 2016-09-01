@@ -1,7 +1,7 @@
 /*!******************************************************************************
  * @file    spi.h
  * @brief   source for spi
- * @par     (C) 2015 MegaChips Corporation - All rights reserved.
+ * @par     (C) 2016 MegaChips Corporation - All rights reserved.
  *
  * This software is authored by MegaChips Corporation intellectual property,
  * including the copyrights in all countries in the world.

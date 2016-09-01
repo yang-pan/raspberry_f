@@ -1,7 +1,7 @@
 /*!******************************************************************************
  * @file    main.c
  * @brief   main thread for sensor logger
- * @par     (C) 2015 MegaChips Corporation - All rights reserved.
+ * @par     (C) 2016 MegaChips Corporation - All rights reserved.
  *
  * This software is authored by MegaChips Corporation intellectual property,
  * including the copyrights in all countries in the world.
@@ -18,20 +18,6 @@
 
 #include "common.h"
 #include "frizzController.h"
-
-// Debug message
-#ifdef D_DBG_PRINT_ENABLE
-#define DBG_PRINT(...)	printf("%s(%d): ", __func__, __LINE__); printf(__VA_ARGS__)
-#else
-#define DBG_PRINT(...)
-#endif
-
-// Err message
-#ifdef D_DBG_ERR_ENABLE
-#define DBG_ERR(...)	fprintf(stderr, "[ERR] %s(%d): ", __func__, __LINE__); fprintf(stderr, __VA_ARGS__)
-#else
-#define DBG_ERR(...)
-#endif
 
 #define D_SPI_DEV_PATH "/dev/spidev0.0"			// The device file of SPI which connect with frizz 
 #define D_FRIZZ_FIWMWARE_PATH	"bin/from.bin"	// Firmware of frizz
