@@ -11,7 +11,7 @@
 #ifndef __SERIAL_H__
 #define __SERIAL_H__
 
-/*!
+/**
  * serial communication of initialize processing
  *
  * @param[in] path of character device
@@ -19,16 +19,13 @@
  */
 int serial_open( const char* serial_dev_path );
 
-/*!
+/**
  * serial communication of termination processing
- *
- * @param[in]
- * @return
  */
 void serial_close( void );
 
 /**
- * Write data(4bytes) to register 
+ * Write data(4bytes) to register
  */
 int serial_write_reg_32( unsigned int, unsigned int );
 
@@ -38,14 +35,14 @@ int serial_write_reg_32( unsigned int, unsigned int );
 int serial_read_reg_32( unsigned int, unsigned int* );
 
 /**
- *  Write data to register continuously
- *  data size should be an integer multiple of 4 bytes
+ * Write data to register continuously
+ * data size should be an integer multiple of 4 bytes
  */
 int serial_write_burst( unsigned int reg_addr, unsigned char *write_buff, int write_size );
 
 /**
- *  Read data from register continuously
- *  data size should be and integer multiple of 4 bytes 
+ * Read data from register continuously
+ * data size should be and integer multiple of 4 bytes
  */
 int serial_read_burst( unsigned int reg_addr, unsigned char *read_buff, int read_size );
 

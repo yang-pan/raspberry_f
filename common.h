@@ -32,12 +32,12 @@
 // Macro for GPIO IRQ (frizz => raspberry)
 //#define D_USE_GPIO_IRQ
 
-// array size 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+// array size
+#define ARRAY_SIZE(a)		(sizeof(a) / sizeof((a)[0]))
 
 // index of pipe
-#define D_PIPE_R	(0)	// for reading
-#define D_PIPE_W	(1)	// for writting
+#define D_PIPE_R			(0)	// for reading
+#define D_PIPE_W			(1)	// for writting
 
 // return value
 #define D_RESULT_SUCCESS	(0)		// success
@@ -53,12 +53,12 @@ typedef enum {
 } ThreadIdx_e;
 
 /**
- *  Event ID
+ * Event ID
  */
 enum EventIdx {
-	// common
-    EVENT_INITIALIZE_DONE = 0,		// initialize thread finished
-    EVENT_FINISH_THREAD,			// terminate thread finished
+    // common
+    EVENT_INITIALIZE_DONE = 0,			// initialize thread finished
+    EVENT_FINISH_THREAD,				// terminate thread finished
     // frizz Controller
     EVENT_FRIZZCTRL_GPIO_IRQ = 1000,	// GPIO IRQ happend
 };
@@ -67,16 +67,16 @@ enum EventIdx {
  * Thread I/F Event
  */
 typedef struct {
-	int id;		// Event ID
-	int data;	// Event Data
+    int id;		// Event ID
+    int data;	// Event Data
 } thread_event_t;
 
 /**
- *	Thread I/F
+ * Thread I/F
  */
 typedef struct {
-	int pipe_in[2];
-	int pipe_out[2];
+    int pipe_in[2];
+    int pipe_out[2];
 } thread_if_t;
 
 /**

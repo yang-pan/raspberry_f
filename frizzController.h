@@ -18,14 +18,13 @@
  * frizz thread's argument
  */
 typedef struct {
-	thread_if_t	thif;				// I/F to Main thread
-	char spi_dev_path[PATH_MAX];	// SPI device path
-	char frizz_firmware_path[PATH_MAX];	// frizz firmware path
+    thread_if_t	thif;					// I/F to Main thread
+    char spi_dev_path[PATH_MAX];		// SPI device path
+    char frizz_firmware_path[PATH_MAX];	// frizz firmware path
 } frizzCntrollerArg;
 
-
 /**
- * frizz control thread's main function 
+ * frizz control thread's main function
  */
 void *frizzctrl_main( void *arg );
 

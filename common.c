@@ -16,20 +16,20 @@
  */
 void common_changeEndian( unsigned int* src )
 {
-	union {
-		unsigned int ui;
-		char c[4];
-	} src_buf, dst_buf;
+    union {
+        unsigned int ui;
+        char c[4];
+    } src_buf, dst_buf;
 
-	if( src == NULL ) {
-		return;
-	}
-	src_buf.ui = *src;
-	dst_buf.c[0] = src_buf.c[3];
-	dst_buf.c[1] = src_buf.c[2];
-	dst_buf.c[2] = src_buf.c[1];
-	dst_buf.c[3] = src_buf.c[0];
-	*src = dst_buf.ui;
+    if( src == NULL ) {
+        return;
+    }
+    src_buf.ui = *src;
+    dst_buf.c[0] = src_buf.c[3];
+    dst_buf.c[1] = src_buf.c[2];
+    dst_buf.c[2] = src_buf.c[1];
+    dst_buf.c[3] = src_buf.c[0];
+    *src = dst_buf.ui;
 }
 
 /**
@@ -37,12 +37,12 @@ void common_changeEndian( unsigned int* src )
  */
 void common_print_pipe( thread_if_t *thif )
 {
-	if( thif == NULL ) {
-		DBG_ERR( "thif is NULL\n" );
-		return;
-	}
-	DBG_PRINT( "thif: in[0]=%d, in[1]=%d, out[0]=%d, out[1]=%d\n",
-	        thif->pipe_in[0], thif->pipe_in[1], thif->pipe_out[0], thif->pipe_out[1] );
+    if( thif == NULL ) {
+        DBG_ERR( "thif is NULL\n" );
+        return;
+    }
+    DBG_PRINT( "thif: in[0]=%d, in[1]=%d, out[0]=%d, out[1]=%d\n",
+               thif->pipe_in[0], thif->pipe_in[1], thif->pipe_out[0], thif->pipe_out[1] );
 }
 
 /**
@@ -50,9 +50,9 @@ void common_print_pipe( thread_if_t *thif )
  */
 void common_print_event( thread_event_t *ev )
 {
-	if( ev == NULL ) {
-		DBG_ERR( "ev is NULL\n" );
-		return;
-	}
-	DBG_PRINT( "ev: id=%d, data=%d\n", ev->id, ev->data );
+    if( ev == NULL ) {
+        DBG_ERR( "ev is NULL\n" );
+        return;
+    }
+    DBG_PRINT( "ev: id=%d, data=%d\n", ev->id, ev->data );
 }

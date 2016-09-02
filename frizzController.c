@@ -24,91 +24,91 @@
 #include "serial.h"
 
 #ifdef D_USE_GPIO_IRQ
-#define D_RPI_GPIO_IRQ_PIN	(17) // GPIO IRQ pin number
-static int pipe_gpio_irq[2];	// pipe for GPIO IRQ
+#define D_RPI_GPIO_IRQ_PIN	(17)	// GPIO IRQ pin number
+static int pipe_gpio_irq[2];		// pipe for GPIO IRQ
 #endif
 
 static thread_if_t *pIfToMain;	// interface to communicate with main thread
 
 /**
- *  GPIO IRQ driver
- *  triggered by frizz for processing sensor data 
+ * GPIO IRQ driver
+ * triggered by frizz for processing sensor data
  */
 #ifdef D_USE_GPIO_IRQ
 static void gpio_irq_handler( void )
 {
-	thread_event_t ev;
-	ev.id = EVENT_FRIZZCTRL_GPIO_IRQ;
-	ev.data = 0;
-	write( pipe_gpio_irq[D_PIPE_W], &ev, sizeof( ev ) );
+    thread_event_t ev;
+    ev.id = EVENT_FRIZZCTRL_GPIO_IRQ;
+    ev.data = 0;
+    write( pipe_gpio_irq[D_PIPE_W], &ev, sizeof( ev ) );
 }
 #endif
 
 /**
-  * Initialize frizz Cotroller 
-  */
+ * Initialize frizz Cotroller
+ */
 static int init_frizz_controller( frizzCntrollerArg *arg )
 {
-	int ver, ret;
+    int ver, ret;
 
-	pIfToMain = &arg->thif;
-	DBG_PRINT( "SPI device         : %s\n", arg->spi_dev_path );
-	DBG_PRINT( "frizz firmware path: %s\n", arg->frizz_firmware_path );
+    pIfToMain = &arg->thif;
+    DBG_PRINT( "SPI device         : %s\n", arg->spi_dev_path );
+    DBG_PRINT( "frizz firmware path: %s\n", arg->frizz_firmware_path );
 
-	// initialize SPI
-	ret = serial_open( arg->spi_dev_path );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "serial open failed\n" );
-		return D_RESULT_ERROR;
-	}
+    // initialize SPI
+    ret = serial_open( arg->spi_dev_path );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "serial open failed\n" );
+        return D_RESULT_ERROR;
+    }
 
-	// Get frizz's version info
-	ver = frizzdrv_get_ver_reg();
-	DBG_PRINT( "frizz version      : 0x%08x\n", ver );
-	if( ver != D_FRIZZ_CHIPID ) {
-		DBG_ERR( "reading frizz ver register failed\n" );
-		return D_RESULT_ERROR;
-	}
+    // Get frizz's version info
+    ver = frizzdrv_get_ver_reg();
+    DBG_PRINT( "frizz version      : 0x%08x\n", ver );
+    if( ver != D_FRIZZ_CHIPID ) {
+        DBG_ERR( "reading frizz ver register failed\n" );
+        return D_RESULT_ERROR;
+    }
 
-	// initialize frizz
-	ret = frizzdrv_frizz_fw_download( arg->frizz_firmware_path );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "frizz firmware download failed\n" );
-		return D_RESULT_ERROR;
-	}
+    // initialize frizz
+    ret = frizzdrv_frizz_fw_download( arg->frizz_firmware_path );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "frizz firmware download failed\n" );
+        return D_RESULT_ERROR;
+    }
 
 #ifdef D_USE_GPIO_IRQ
-	// initialize the pipe for 
-	if( pipe( pipe_gpio_irq ) != 0 ) {
-		DBG_ERR( "pipe error. errno=%d. %s\n", errno, strerror( errno ) );
-		return D_RESULT_ERROR;
-	}
+    // initialize the pipe for
+    if( pipe( pipe_gpio_irq ) != 0 ) {
+        DBG_ERR( "pipe error. errno=%d. %s\n", errno, strerror( errno ) );
+        return D_RESULT_ERROR;
+    }
 
-	// GPIO IRQ setting(GPIO 1, Active Low) -- raspberry side 
-	wiringPiSetupSys();
-	wiringPiISR( D_RPI_GPIO_IRQ_PIN, INT_EDGE_FALLING, gpio_irq_handler );
+    // GPIO IRQ setting(GPIO 1, Active Low) -- raspberry side
+    wiringPiSetupSys();
+    wiringPiISR( D_RPI_GPIO_IRQ_PIN, INT_EDGE_FALLING, gpio_irq_handler );
 
-	// GPIO IRQ setting(GPIO 1, Active Low) -- frizz side
-	ret = frizzdrv_set_setting( D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "frizz GPIO setting failed\n" );
-		return D_RESULT_ERROR;
-	}
+    // GPIO IRQ setting(GPIO 1, Active Low) -- frizz side
+    ret = frizzdrv_set_setting( D_FRIZZ_GPIO_INT_NUM_1, D_FRIZZ_INT_ACTIVE_LOW );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "frizz GPIO setting failed\n" );
+        return D_RESULT_ERROR;
+    }
 #endif
 
-	return D_RESULT_SUCCESS;
+    return D_RESULT_SUCCESS;
 }
 
 /**
-  * Send event to main
-  */
+ * Send event to main
+ */
 static int sendEvent_toMain( thread_event_t* ev )
 {
-	if( write( pIfToMain->pipe_out[D_PIPE_W], ev, sizeof( thread_event_t ) ) <= 0 ) {
-		DBG_ERR( "write error\n" );
-		return D_RESULT_ERROR;
-	}
-	return D_RESULT_SUCCESS;
+    if( write( pIfToMain->pipe_out[D_PIPE_W], ev, sizeof( thread_event_t ) ) <= 0 ) {
+        DBG_ERR( "write error\n" );
+        return D_RESULT_ERROR;
+    }
+    return D_RESULT_SUCCESS;
 }
 
 /**
@@ -116,132 +116,139 @@ static int sendEvent_toMain( thread_event_t* ev )
  */
 void *frizzctrl_main( void *arg )
 {
-	int ret;
-	thread_event_t ev;
-	int command_parm[FRIZZ_PACKET_DATA_MAX];
-	
-	DBG_PRINT( "frizz controller thread: start\n" );
+    int ret;
+    thread_event_t ev;
+    int command_parm[FRIZZ_PACKET_DATA_MAX];
 
-	//-------------------------------------------------------------------------
-	// check argument 
-	if( arg == NULL ) {
-		DBG_PRINT( "arg is NULL. frizz controller thread: end\n" );
-		exit( EXIT_FAILURE );
-	}
+    DBG_PRINT( "frizz controller thread: start\n" );
 
-	//-------------------------------------------------------------------------
-	// initialize
-	if( init_frizz_controller( ( frizzCntrollerArg* ) arg ) != D_RESULT_SUCCESS ) {
-		DBG_ERR( "init_frizz_controller error\n" );
-		exit( EXIT_FAILURE );
-	}
+    //-------------------------------------------------------------------------
+    // check argument
+    if( arg == NULL ) {
+        DBG_PRINT( "arg is NULL. frizz controller thread: end\n" );
+        exit( EXIT_FAILURE );
+    }
 
-	//-------------------------------------------------------------------------
-	// send EVENT_INITIALIZE_DONE to main thread  
-	ev.id = EVENT_INITIALIZE_DONE;
-	ev.data = 0;
-	ret = sendEvent_toMain( &ev );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "sending initialize done event to main failed\n" );
-		exit( EXIT_FAILURE );
-	}
+    //-------------------------------------------------------------------------
+    // initialize
+    if( init_frizz_controller( ( frizzCntrollerArg* ) arg ) != D_RESULT_SUCCESS ) {
+        DBG_ERR( "init_frizz_controller error\n" );
+        exit( EXIT_FAILURE );
+    }
 
-	//-------------------------------------------------------------------------
-	// (accrometer)
-	ret = frizzdrv_set_sensor_interval( SENSOR_ID_ACCEL_RAW, 1000, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "set acc interval failed\n" );
-		exit( EXIT_FAILURE );
-	}
-	// Activate sensors
-	ret = frizzdrv_set_sensor_active( SENSOR_ID_ACCEL_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "activate acc failed\n" );
-		exit( EXIT_FAILURE );
-	}
-	
-	ret = frizzdrv_send_sensor_command( SENSOR_ID_ACCEL_RAW, SENSOR_GET_VERSION, 1, &command_parm );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "get ecompass version failed\n" );
-		exit( EXIT_FAILURE );
-	}
-	
-	// gyro
-	ret = frizzdrv_set_sensor_interval( SENSOR_ID_GYRO_RAW, 1000, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "set gyro interval failed\n" );
-		exit( EXIT_FAILURE );
-	}
+    //-------------------------------------------------------------------------
+    // send EVENT_INITIALIZE_DONE to main thread
+    ev.id = EVENT_INITIALIZE_DONE;
+    ev.data = 0;
+    ret = sendEvent_toMain( &ev );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "sending initialize done event to main failed\n" );
+        exit( EXIT_FAILURE );
+    }
 
-	ret = frizzdrv_set_sensor_active( SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "activate gyro failed\n" );
-		exit( EXIT_FAILURE );
-	}
+    //-------------------------------------------------------------------------
+    // (Accrometer)
+    ret = frizzdrv_set_sensor_interval( SENSOR_ID_ACCEL_RAW, 1000 );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "set acc interval failed\n" );
+        exit( EXIT_FAILURE );
+    }
+    // Activate
+    ret = frizzdrv_set_sensor_active( SENSOR_ID_ACCEL_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "activate acc failed\n" );
+        exit( EXIT_FAILURE );
+    }
+    // Get sensor version
+    ret = frizzdrv_send_sensor_command( SENSOR_ID_ACCEL_RAW, SENSOR_GET_VERSION, 1, &command_parm );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "get ecompass version failed\n" );
+        exit( EXIT_FAILURE );
+    }
 
-	// compress
-	ret = frizzdrv_set_sensor_interval( SENSOR_ID_MAGNET_RAW, 1000, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "set ecompress interval failed\n" );
-		exit( EXIT_FAILURE );
-	}
-	// Activate sensors
-	ret = frizzdrv_set_sensor_active( SENSOR_ID_MAGNET_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
-	if( ret != D_RESULT_SUCCESS ) {
-		DBG_ERR( "activate ecompass failed\n" );
-		exit( EXIT_FAILURE );
-	}
-	
-	
+    // (Gyro)
+    ret = frizzdrv_set_sensor_interval( SENSOR_ID_GYRO_RAW, 1000 );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "set gyro interval failed\n" );
+        exit( EXIT_FAILURE );
+    }
+    // Activate
+    ret = frizzdrv_set_sensor_active( SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "activate gyro failed\n" );
+        exit( EXIT_FAILURE );
+    }
+    // Get sensor version
+    ret = frizzdrv_send_sensor_command( SENSOR_ID_GYRO_RAW, SENSOR_GET_VERSION, 1, &command_parm );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "get ecompass version failed\n" );
+        exit( EXIT_FAILURE );
+    }
+
+    // (Compass)
+    ret = frizzdrv_set_sensor_interval( SENSOR_ID_MAGNET_CALIB, 1000 );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "set ecompress interval failed\n" );
+        exit( EXIT_FAILURE );
+    }
+    // Activate
+    ret = frizzdrv_set_sensor_active( SENSOR_ID_MAGNET_CALIB, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "activate ecompass failed\n" );
+        exit( EXIT_FAILURE );
+    }
+    // Get sensor version
+    ret = frizzdrv_send_sensor_command( SENSOR_ID_MAGNET_CALIB, SENSOR_GET_VERSION, 1, &command_parm );
+    if( ret != D_RESULT_SUCCESS ) {
+        DBG_ERR( "get ecompass version failed\n" );
+        exit( EXIT_FAILURE );
+    }
 
 #ifdef D_USE_GPIO_IRQ
-	struct pollfd fds[2];
+    struct pollfd fds[2];
 
-	fds[0].fd = pipe_gpio_irq[D_PIPE_R];
-	fds[0].events = POLLIN;
-	fds[0].revents = 0;
+    fds[0].fd = pipe_gpio_irq[D_PIPE_R];
+    fds[0].events = POLLIN;
+    fds[0].revents = 0;
 
-	fds[1].fd = pIfToMain->pipe_in[D_PIPE_R];
-	fds[1].events = POLLIN;
-	fds[1].revents = 0;
+    fds[1].fd = pIfToMain->pipe_in[D_PIPE_R];
+    fds[1].events = POLLIN;
+    fds[1].revents = 0;
 
-	//message loop
-	while( 1 ) {
-		poll( fds , ARRAY_SIZE( fds ), -1 );
+    //message loop
+    while( 1 ) {
+        poll( fds , ARRAY_SIZE( fds ), -1 );
 
-		// Message from GPIO IRQ
-		if( fds[0].revents & POLLIN ) {
-			do {
-				if( read( fds[0].fd, &ev, sizeof( ev ) ) < 0 ) {
-					break;
-				}
-				fds[0].revents = 0;
-				poll( &fds[0] , 1, 0 );
-			} while( fds[0].revents & POLLIN );
+        // Message from GPIO IRQ
+        if( fds[0].revents & POLLIN ) {
+            do {
+                if( read( fds[0].fd, &ev, sizeof( ev ) ) < 0 ) {
+                    break;
+                }
+                fds[0].revents = 0;
+                poll( &fds[0] , 1, 0 );
+            } while( fds[0].revents & POLLIN );
 
-			// read sensor data if GPIO IRQ happend
-			while( frizzdrv_polling_data() == D_RESULT_SUCCESS );
-			fds[0].revents = 0;
-		}
-		// Message from Main thread
-		if( fds[1].revents & POLLIN ) {
-			// 
-			break;
-		}
-	}
+            // read sensor data if GPIO IRQ happend
+            while( frizzdrv_polling_data() == D_RESULT_SUCCESS );
+            fds[0].revents = 0;
+        }
+        // Message from Main thread
+        if( fds[1].revents & POLLIN ) {
+            break;
+        }
+    }
 #else
-	while( 1 )
-	{
-		frizzdrv_polling_data();
-	}
+    while( 1 )
+    {
+        frizzdrv_polling_data();
+    }
 #endif
+    if( arg ) {
+        free( arg );
+    }
+    DBG_PRINT( "frizz controller thread: end\n" );
 
-	// 
-	if( arg ) {
-		free( arg );
-	}
-	DBG_PRINT( "frizz controller thread: end\n" );
-
-	return 0;
+    return 0;
 }
 

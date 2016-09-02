@@ -19,7 +19,7 @@
  * @name Version
  */
 //@{
-#define HUB_MGR_VERSION	(20150713)
+#define HUB_MGR_VERSION	(20160503)
 //@}
 
 /**
@@ -41,8 +41,7 @@
  * @note On-changed
  * @note this sensor always pushes to HW FIFO
  */
-typedef struct
-{
+typedef struct {
 	int	interval;		/// Interval Time [msec] 0: On-event, 0<: interval time
 	int f_status;		/// status flag #HUB_MGR_IF_STATUS_ACTIVE ...
 } hub_mgr_data_t;
@@ -57,6 +56,7 @@ typedef struct
 #define HUB_MGR_IF_STATUS_FIFO_FULL_NOTIFY_SECONDARY				(1 << 2)	/// detect SW FIFO secondary threshold
 #define HUB_MGR_IF_STATUS_FIFO_LATEST_DATA_AVAILABLE				(1 << 3)	/// Dumped specified sensor data
 #define HUB_MGR_IF_STATUS_FIFO_LATEST_DATA_AVAILABLE_SECONDARY		(1 << 4)	/// Dumped specified secondary sensor data
+#define HUB_MGR_IF_STATUS_FIFO_IN_FLUSH								(1 << 5)	/// In flushing SW FIFO (both of them)
 #define HUB_MGR_IF_STATUS_UPDATED									(1 <<30)	/// Flag of updated (for Internal)
 #define HUB_MGR_IF_STATUS_END										(1 <<31)	/// Force stop (for DEBUG)
 //@}
@@ -80,14 +80,27 @@ typedef struct
 //@}
 
 /**
+ * @name Enumeration value
+ */
+//@{
+/**
+ * @brief Sensor type
+ */
+typedef enum {
+	HUB_MGR_SENSOR_TYPE_CONTINUOUS	= 0,	/// Sensor outputs are periodic and continuous.
+	HUB_MGR_SENSOR_TYPE_ON_EVENT	= 1,	/// Sensor outputs are executed only at specified event.
+	HUB_MGR_SENSOR_TYPE_ONE_SHOT	= 2,	/// Sensor output is only once at specified event.
+} HUB_MGR_SENSOR_TYPE;
+//@}
+
+/**
  * @name Command List
  */
 //@{
 /**
  * @brief Return code for Command
  */
-typedef enum
-{
+typedef enum {
 	HUB_MGR_CMD_RET_OK				= 0,	/// OK
 	HUB_MGR_CMD_RET_E_SENSOR_ID		= -1,	/// Invalid Sensor ID
 	HUB_MGR_CMD_RET_E_CMD_ID		= -2,	/// Invalid CMD ID
@@ -296,6 +309,81 @@ typedef enum
 #define HUB_MGR_CMD_SET_SENSOR_INT_MASK			0x10
 
 /**
+ * @brief set flag of interruption from frizz to HOST
+ *
+ * @param cmd_code #HUB_MGR_GEN_CMD_CODE (0x11, 0, 0, 0)
+ *
+ *
+ * @return command log
+ */
+#define HUB_MGR_CMD_GET_COMMAND_LOG				0x11
+
+/**
+ * @brief flush data which are in SW FIFO (both of primary and secondary)
+ *
+ * @note Status of flush will be cleared when SW FIFO became empty.
+ *
+ * @return #HUB_MGR_CMD_RET_CODE
+ */
+#define HUB_MGR_CMD_FLUSH_SW_FIFO				0x12
+
+
+/**
+ * @brief get sensor Type of assigned
+ *
+ * @param cmd_code #HUB_MGR_GEN_CMD_CODE (0x12, sen_id, 0x00, 0x00)
+ *
+ * @note sen_id sensor id
+ *
+ * @return result and sensor type
+ * @retval <0 #HUB_MGR_CMD_RET_CODE
+ * @retval >= sensor type #HUB_MGR_SENSOR_TYPE
+ */
+#define HUB_MGR_CMD_GET_SENSOR_TYPE				0x13
+
+
+/**
+ * @brief write something into flash
+ *
+ * @note data 1st is 0x20BB0000, BB is size(max. 0x80 bytes),
+ * @note data 2nd is 0xRRRRRRRR, RR is address offset.
+  *
+ * @note data 3rd.. is data sequence,
+ *
+ * @return #HUB_MGR_CMD_RET_CODE
+ */
+#define HUB_MGR_CMD_FLASH_WRITE				0x20
+
+/**
+ * @brief read something from flash
+ *
+ * @note data 1st is 0x21BB0000, BB is size(max. 0x80 bytes),
+ * @note data 2nd is 0xRRRRRRRR, RR is address offset.
+ *
+ * @return #HUB_MGR_CMD_RET_CODE
+ */
+#define HUB_MGR_CMD_FLASH_READ				0x21
+
+/**
+ * @brief erase sector from flash.
+ *
+ * @note data sequence is 0x22RRRRRR, 0xRRRRRR is sector number offset
+ * eg. 0xRRRRRR = 0x1,, the real address 0x1*4096 = 0x1000;
+ *
+ * @return #HUB_MGR_CMD_RET_CODE
+ */
+#define HUB_MGR_CMD_FLASH_ERASE				0x22
+
+/**
+ * @brief set SPI interface setting.
+ *
+ * @note data sequence is 0x23BBCCDD, BB is clock(unit:MHz), CC is SPI mode(0,2), DD: chip select
+ *
+ * @return #HUB_MGR_CMD_RET_CODE
+ */
+#define HUB_MGR_CMD_FLASH_SETTING				0x23
+
+/**
  * @brief deactivate sensor secondary
  *
  * @param cmd_code #HUB_MGR_GEN_CMD_CODE (0x40, sen_id, 0x00, 0x00)
@@ -415,13 +503,13 @@ typedef enum
 #define	HUB_MGR_CMD_GET_CUSTOMER_NAME					(0xFD)
 
 /**
- * @brief get current timestamp
+ * @brief get current timestamp, g_clk_100K, g_clk_40M
  *
  * @param cmd_code #HUB_MGR_GEN_CMD_CODE (0xFC, 0, 0, 0)
  *
- * @return current timestamp
+ * @return current timestamp, g_clk_100K, g_clk_40M
  */
-#define HUB_MGR_CMD_GET_CURRENT_TS					(0xFC)
+#define HUB_MGR_CMD_GET_CURRENT_TS_CLK					(0xFC)
 //@}
 
 
@@ -441,11 +529,19 @@ typedef enum
 /**
  * @name USB Mode Command
  */
-typedef enum
-{
+typedef enum {
 	CMD_HIGH_SPEED_SLEEP_MODE	= 0,	//high speed sleep mode
 	CMD_LOW_SPEED_SLEEP_MODE	= 1,	//low speed sleep mode
 	CMD_LOW_SPEED_STOP_MODE		= 2,	//high speed stop mode
 } USB_MODE_CMD;
+
+/**
+ * Possible values of the status field of sensor events.
+ */
+#define SENSOR_STATUS_NO_CONTACT		(-1)
+#define SENSOR_STATUS_UNRELIABLE		(0)
+#define SENSOR_STATUS_ACCURACY_LOW		(1)
+#define SENSOR_STATUS_ACCURACY_MEDIUM	(2)
+#define SENSOR_STATUS_ACCURACY_HIGH 	(3)
 
 #endif
