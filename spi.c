@@ -38,6 +38,18 @@ static uint16_t delay;
 
 static pthread_mutex_t spi_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/*!********************************************************************
+ *@brief      Transfer data through SPI
+ *@par        Inner functions
+ *
+ *@param      tx_buff		pointer to the transfer buffer
+ *@param      rx_buff		pointer to the recevie buffer
+ *@param      buff_size	buffer size
+ *
+ *@retval     D_RESULT_SUCCESS	transfer successfully
+ *@retval     D_RESULT_ERROR		error
+ *
+**********************************************************************/
 static int spi_transfer( unsigned char *tx_buff, unsigned char *rx_buff, int buff_size )
 {
     int ret;
@@ -104,9 +116,16 @@ end:
     return result;
 }
 
-/**
- * Initialize SPI
- */
+/*!********************************************************************
+ *@brief      Initialize SPI
+ *@par        External public functions
+ *
+ *@param      serial_dev_path		path of spi device file
+ *
+ *@retval     D_RESULT_SUCCESS	Initialize successfully
+ *@retval     D_RESULT_ERROR		error
+ *
+**********************************************************************/
 int spi_open( const char* serial_dev_path )
 {
     int ret = 0;
@@ -195,9 +214,15 @@ end:
     return result;
 }
 
-/**
- * Release SPI
- */
+/*!********************************************************************
+ *@brief      Release SPI resource
+ *@par        External public functions
+ *
+ *@param      void
+ *
+ *@retval     void
+ *
+**********************************************************************/
 void spi_close( void )
 {
     if( spi_fd ) {
@@ -206,9 +231,17 @@ void spi_close( void )
     spi_fd = 0;
 }
 
-/**
- * Write data to register by spi
- */
+/*!********************************************************************
+ *@brief      Write data to register through SPI
+ *@par        External public functions
+ *
+ *@param      reg_addr	register address
+ *@param      data		data to send
+ *
+ *@retval     D_RESULT_SUCCESS	write successfully
+ *@retval     D_RESULT_ERROR		error
+ *
+**********************************************************************/
 int spi_write_reg_32( unsigned int reg_addr, unsigned int data )
 {
     uint8_t	tx[6], rx[6];
@@ -228,9 +261,17 @@ int spi_write_reg_32( unsigned int reg_addr, unsigned int data )
     return  spi_transfer( tx, rx, sizeof( tx ) );
 }
 
-/**
- * read data from register by spi
- */
+/*!********************************************************************
+ *@brief      Read data from register through SPI
+ *@par        External public functions
+ *
+ *@param      reg_addr	register address
+ *@param      data		pointer to the area to store data
+ *
+ *@retval     D_RESULT_SUCCESS	read successfully
+ *@retval     D_RESULT_ERROR		error
+ *
+**********************************************************************/
 int spi_read_reg_32( unsigned int reg_addr, unsigned int *data )
 {
     uint8_t	tx[6], rx[6];
@@ -265,9 +306,18 @@ int spi_read_reg_32( unsigned int reg_addr, unsigned int *data )
     return D_RESULT_SUCCESS;
 }
 
-/**
- * Write data to register continuously by spi
- */
+/*!********************************************************************
+ *@brief      Write data to register continuously through spi
+ *@par        External public functions
+ *
+ *@param      reg_addr		register address
+ *@param      write_buff		pointer to the area of source data
+ *@param      write_size		data size to write
+ *
+ *@retval     D_RESULT_SUCCESS	write successfully
+ *@retval     D_RESULT_ERROR		error
+ *
+**********************************************************************/
 int spi_write_burst( unsigned int reg_addr, unsigned char *write_buff, int write_size )
 {
     uint8_t tx[D_MAX_TRANSFER_SIZE + 2];
@@ -291,9 +341,18 @@ int spi_write_burst( unsigned int reg_addr, unsigned char *write_buff, int write
     return spi_transfer( tx, rx, write_size + 2 );
 }
 
-/**
- * Read data from register continuously by spi
- */
+/*!********************************************************************
+ *@brief      Read data from register continuously through spi
+ *@par        External public functions
+ *
+ *@param      reg_addr		register address
+ *@param      read_buff		pointer to the area to store data
+ *@param      write_size		data size to read
+ *
+ *@retval     D_RESULT_SUCCESS	read successfully
+ *@retval     D_RESULT_ERROR		error
+ *
+**********************************************************************/
 int spi_read_burst( unsigned int reg_addr, unsigned char *read_buff, int read_size )
 {
     uint8_t tx[D_MAX_TRANSFER_SIZE + 2];

@@ -14,8 +14,8 @@
 #include <limits.h>
 #include "common.h"
 
-/**
- * frizz thread's argument
+/**@struct  frizzCntrollerArg
+ * @brief   Arguments of frizz thread
  */
 typedef struct {
     thread_if_t	thif;					// I/F to Main thread
@@ -23,9 +23,15 @@ typedef struct {
     char frizz_firmware_path[PATH_MAX];	// frizz firmware path
 } frizzCntrollerArg;
 
-/**
- * frizz control thread's main function
- */
+/*!********************************************************************
+ *@brief      Main function of frizz control thread
+ *@par        External public functions
+ *
+ *@param      arg     pointer to the arguments of frizz thread
+ *
+ *@retval     void
+ *
+**********************************************************************/
 void *frizzctrl_main( void *arg );
 
 #endif	// __FRIZZ_CONTROLLER_H__

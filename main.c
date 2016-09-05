@@ -26,6 +26,17 @@
 
 static frizzCntrollerArg *frzzCtrlArg;
 
+/*!********************************************************************
+ *@brief      Initialize thread attributes
+ *@par        Inner functions
+ *
+ *@param      attr_thread		thread attributes
+ *@param      prioryty		schedule prioryty
+ *
+ *@retval     D_RESULT_SUCCESS			initialization successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
 static int init_ThreadAttr( pthread_attr_t *attr_thread, int prioryty )
 {
     int		ret;
@@ -97,6 +108,16 @@ static int sendEvent( ThreadIdx_e thidx, thread_event_t* ev )
 }
 #endif
 
+/*!********************************************************************
+ *@brief      Main function
+ *@par        External public functions
+ *
+ *@param      argc		argument count
+ *@param      argv		argument vector
+ *
+ *@retval     0			finished
+ *
+**********************************************************************/
 int main( int argc, char **argv )
 {
     pthread_t th_frizzctrl;
@@ -137,7 +158,7 @@ int main( int argc, char **argv )
         exit( EXIT_FAILURE );
     }
 
-    // Set frizz Controller thread's priority
+    // Set frizz Controller thread priority
     memset( &ev, 0, sizeof( ev ) );
     if( read( frzzCtrlArg->thif.pipe_out[D_PIPE_R], &ev, sizeof( ev ) ) < 0 ) {
         DBG_ERR( "read error\n" );

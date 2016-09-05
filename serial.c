@@ -19,20 +19,16 @@
 //#include "i2c.h" // not support now
 #endif
 
-void prepare_command( unsigned char command, unsigned int reg_addr, unsigned char *tx_buff )
-{
-    tx_buff[0] = command;
-    tx_buff[1] = ( unsigned char )reg_addr;
-}
-
-void prepare_data( unsigned int data, unsigned char *tx_buff )
-{
-    tx_buff[2] = ( data >> 24 ) & 0xff;
-    tx_buff[3] = ( data >> 16 ) & 0xff;
-    tx_buff[4] = ( data >>  8 ) & 0xff;
-    tx_buff[5] = ( data >>  0 ) & 0xff;
-}
-
+/*!********************************************************************
+ *@brief      Open serial devcie
+ *@par        External public functions
+ *
+ *@param      serial_dev_path		path of serial device
+ *
+ *@retval     D_RESULT_SUCCESS		open successfully
+ *@retval     D_RESULT_ERROR			open failed
+ *
+**********************************************************************/
 int serial_open(const char* serial_dev_path)
 {
 #ifdef CONFIG_FRIZZ_SPI
@@ -42,6 +38,15 @@ int serial_open(const char* serial_dev_path)
 #endif
 }
 
+/*!********************************************************************
+ *@brief      Close serial devcie
+ *@par        External public functions
+ *
+ *@param      void
+ *
+ *@retval     void
+ *
+**********************************************************************/
 void serial_close( void )
 {
 #ifdef CONFIG_FRIZZ_SPI
@@ -51,9 +56,17 @@ void serial_close( void )
 #endif
 }
 
-/**
- * Write data(4bytes) to register
- */
+/*!********************************************************************
+ *@brief      write register
+ *@par        External public functions
+ *
+ *@param      reg_addr	register address
+ *@param      data		pointer to the area of source data
+ *
+ *@retval     D_RESULT_SUCCESS		write successfully
+ *@retval     D_RESULT_ERROR			write failed
+ *
+**********************************************************************/
 int serial_write_reg_32( unsigned int reg_addr, unsigned int data )
 {
 #ifdef CONFIG_FRIZZ_SPI
@@ -63,9 +76,17 @@ int serial_write_reg_32( unsigned int reg_addr, unsigned int data )
 #endif
 }
 
-/**
- * Read data(4bytes) from register
- */
+/*!********************************************************************
+ *@brief      Read register
+ *@par        External public functions
+ *
+ *@param      reg_addr	register address
+ *@param      data		pointer to the area to store data
+ *
+ *@retval     D_RESULT_SUCCESS		read successfully
+  @retval     D_RESULT_ERROR			error
+ *
+**********************************************************************/
 int serial_read_reg_32( unsigned int reg_addr, unsigned int *data )
 {
 #ifdef CONFIG_FRIZZ_SPI
@@ -75,10 +96,19 @@ int serial_read_reg_32( unsigned int reg_addr, unsigned int *data )
 #endif
 }
 
-/**
- *  Write data to register continuously
- *  data size should be an integer multiple of 4 bytes
- */
+/*!********************************************************************
+ *@brief      write register continuously
+ *             data size should be an integer multiple of 4 bytes
+ *@par        External public functions
+ *
+ *@param      reg_addr		register address
+ *@param      write_buff		pointer to the area of source data
+ *@param      write_size		data size to write
+ *
+ *@retval     D_RESULT_SUCCESS	write successfully
+  @retval     D_RESULT_ERROR		error
+ *
+**********************************************************************/
 int serial_write_burst( unsigned int reg_addr, unsigned char *write_buff, int write_size )
 {
 #ifdef CONFIG_FRIZZ_SPI
@@ -88,10 +118,19 @@ int serial_write_burst( unsigned int reg_addr, unsigned char *write_buff, int wr
 #endif
 }
 
-/**
- *  Read data from register continuously
- *  data size should be and integer multiple of 4 bytes
- */
+/*!********************************************************************
+ *@brief      read register continuously
+ *             data size should be and integer multiple of 4 bytes
+ *@par        External public functions
+ *
+ *@param      reg_addr		register address
+ *@param      read_buff		pointer to the area to store data
+ *@param      read_size		data size to read
+ *
+ *@retval     D_RESULT_SUCCESS	read successfully
+  @retval     D_RESULT_ERROR		error
+ *
+**********************************************************************/
 int serial_read_burst( unsigned int reg_addr, unsigned char *read_buff, int read_size )
 {
 #ifdef CONFIG_FRIZZ_SPI

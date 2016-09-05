@@ -12,7 +12,7 @@
 #define __COMMON_H__
 
 // Macro for printf
-#define D_DBG_PRINT_ENABLE	// standard log
+#define D_DBG_PRINT_ENABLE	// standard debug log
 #define D_DBG_ERR_ENABLE	// err log
 
 // Debug message
@@ -43,8 +43,8 @@
 #define D_RESULT_SUCCESS	(0)		// success
 #define D_RESULT_ERROR		(-1)	// err
 
-/**
- * Thread ID
+/**@enum    ThreadIdx_e
+ * @brief   Thread ID
  */
 typedef enum {
     THREAD_MAIN = 0,			// Main Thread
@@ -52,8 +52,8 @@ typedef enum {
     THREAD_NUM,
 } ThreadIdx_e;
 
-/**
- * Event ID
+/**@enum    EventIdx
+ * @brief   EVENT ID
  */
 enum EventIdx {
     // common
@@ -63,35 +63,53 @@ enum EventIdx {
     EVENT_FRIZZCTRL_GPIO_IRQ = 1000,	// GPIO IRQ happend
 };
 
-/**
- * Thread I/F Event
+/**@struct  thread_event_t
+ * @brief   thread event
  */
 typedef struct {
     int id;		// Event ID
     int data;	// Event Data
 } thread_event_t;
 
-/**
- * Thread I/F
+/**@struct  thread_if_t
+ * @brief   thread pipe I/F
  */
 typedef struct {
     int pipe_in[2];
     int pipe_out[2];
 } thread_if_t;
 
-/**
- * Change endian(4byte)
- */
+/*!********************************************************************
+ *@brief      Function for endian conversion(4byte)
+ *@par        External public functions
+ *
+ *@param      src    pointer to the source data
+ *
+ *@retval     void
+ *
+**********************************************************************/
 void common_changeEndian( unsigned int* src );
 
-/**
- * print thread I/F info
- */
+/*!********************************************************************
+ *@brief      Function for printing pipe information of thread
+ *@par        External public functions
+ *
+ *@param      thif    pointer to the thread pipe I/F
+ *
+ *@retval     void
+ *
+**********************************************************************/
 void common_print_pipe( thread_if_t *thif );
 
-/**
- * print event info
- */
+/*!********************************************************************
+ *@brief      Function for printing information of thread event
+ *@par        External public functions
+ *
+ *@param      ev    pointer to the thread event
+ *
+ *@retval     void
+ *
+**********************************************************************/
 void common_print_event( thread_event_t *ev );
 
 #endif // __COMMON_H__

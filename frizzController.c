@@ -30,10 +30,15 @@ static int pipe_gpio_irq[2];		// pipe for GPIO IRQ
 
 static thread_if_t *pIfToMain;	// interface to communicate with main thread
 
-/**
- * GPIO IRQ driver
- * triggered by frizz for processing sensor data
- */
+/*!********************************************************************
+ *@brief      Gpio event handler
+ *@par        Inner functions
+ *
+ *@param      void
+ *
+ *@retval     void
+ *
+**********************************************************************/
 #ifdef D_USE_GPIO_IRQ
 static void gpio_irq_handler( void )
 {
@@ -44,13 +49,21 @@ static void gpio_irq_handler( void )
 }
 #endif
 
-/**
- * Initialize frizz Cotroller
- */
+/*!********************************************************************
+ *@brief      Initialize frizz controller
+ *@par        Inner functions
+ *
+ *@param      arg    arguments of frizz thread
+ *
+ *@retval     D_RESULT_SUCCESS			initialization successfully
+ *@retval     D_RESULT_ERROR				initialization failed
+ *
+**********************************************************************/
 static int init_frizz_controller( frizzCntrollerArg *arg )
 {
-    int ver, ret;
-
+    int ret;
+    unsigned int ver;
+    
     pIfToMain = &arg->thif;
     DBG_PRINT( "SPI device         : %s\n", arg->spi_dev_path );
     DBG_PRINT( "frizz firmware path: %s\n", arg->frizz_firmware_path );
@@ -63,10 +76,11 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
     }
 
     // Get frizz's version info
-    ver = frizzdrv_get_ver_reg();
+    ver = 0;
+    ret = frizzdrv_get_ver_reg(&ver);
     DBG_PRINT( "frizz version      : 0x%08x\n", ver );
     if( ver != D_FRIZZ_CHIPID ) {
-        DBG_ERR( "reading frizz ver register failed\n" );
+        DBG_ERR( " frizz ver err\n" );
         return D_RESULT_ERROR;
     }
 
@@ -99,9 +113,16 @@ static int init_frizz_controller( frizzCntrollerArg *arg )
     return D_RESULT_SUCCESS;
 }
 
-/**
- * Send event to main
- */
+/*!********************************************************************
+ *@brief      Send event to main thread
+ *@par        Inner functions
+ *
+ *@param      ev     pointer
+ *
+ *@retval     D_RESULT_SUCCESS			send event successfully
+ *@retval     D_RESULT_ERROR				initialization failed
+ *
+**********************************************************************/
 static int sendEvent_toMain( thread_event_t* ev )
 {
     if( write( pIfToMain->pipe_out[D_PIPE_W], ev, sizeof( thread_event_t ) ) <= 0 ) {
@@ -111,9 +132,15 @@ static int sendEvent_toMain( thread_event_t* ev )
     return D_RESULT_SUCCESS;
 }
 
-/**
- * main function of frizz control thread
- */
+/*!********************************************************************
+ *@brief      Main function of frizz control thread
+ *@par        External public functions
+ *
+ *@param      arg     pointer to the arguments of frizz thread
+ *
+ *@retval     void*
+ *
+**********************************************************************/
 void *frizzctrl_main( void *arg )
 {
     int ret;
@@ -154,7 +181,7 @@ void *frizzctrl_main( void *arg )
         exit( EXIT_FAILURE );
     }
     // Activate
-    ret = frizzdrv_set_sensor_active( SENSOR_ID_ACCEL_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+    ret = frizzdrv_activate_sensor( SENSOR_ID_ACCEL_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
     if( ret != D_RESULT_SUCCESS ) {
         DBG_ERR( "activate acc failed\n" );
         exit( EXIT_FAILURE );
@@ -173,7 +200,7 @@ void *frizzctrl_main( void *arg )
         exit( EXIT_FAILURE );
     }
     // Activate
-    ret = frizzdrv_set_sensor_active( SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+    ret = frizzdrv_activate_sensor( SENSOR_ID_GYRO_RAW, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
     if( ret != D_RESULT_SUCCESS ) {
         DBG_ERR( "activate gyro failed\n" );
         exit( EXIT_FAILURE );
@@ -192,7 +219,7 @@ void *frizzctrl_main( void *arg )
         exit( EXIT_FAILURE );
     }
     // Activate
-    ret = frizzdrv_set_sensor_active( SENSOR_ID_MAGNET_CALIB, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
+    ret = frizzdrv_activate_sensor( SENSOR_ID_MAGNET_CALIB, D_FRIZZ_SENSOR_ACTIVATE, D_FRIZZ_ACTIVATE_PARAM_USE_HWFIFO, D_FRIZZ_ACTIVATE_PARAM_WITH_INTERRUPT );
     if( ret != D_RESULT_SUCCESS ) {
         DBG_ERR( "activate ecompass failed\n" );
         exit( EXIT_FAILURE );

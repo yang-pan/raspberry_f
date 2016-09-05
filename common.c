@@ -11,9 +11,15 @@
 #include <stdio.h>
 #include "common.h"
 
-/**
- * convert edian(4byte)
- */
+/*!********************************************************************
+ *@brief      Function for endian conversion(4byte)
+ *@par        External public functions
+ *
+ *@param      src    pointer to the source data
+ *
+ *@retval     void
+ *
+**********************************************************************/
 void common_changeEndian( unsigned int* src )
 {
     union {
@@ -32,9 +38,15 @@ void common_changeEndian( unsigned int* src )
     *src = dst_buf.ui;
 }
 
-/**
- * print thread I/F info
- */
+/*!********************************************************************
+ *@brief      Function for printing pipe information of thread
+ *@par        External public functions
+ *
+ *@param      thif    pointer to the thread pipe I/F
+ *
+ *@retval     void
+ *
+**********************************************************************/
 void common_print_pipe( thread_if_t *thif )
 {
     if( thif == NULL ) {
@@ -45,9 +57,15 @@ void common_print_pipe( thread_if_t *thif )
                thif->pipe_in[0], thif->pipe_in[1], thif->pipe_out[0], thif->pipe_out[1] );
 }
 
-/**
- * print event info
- */
+/*!********************************************************************
+ *@brief      Function for printing information of thread event
+ *@par        External public functions
+ *
+ *@param      ev    pointer to the thread event
+ *
+ *@retval     void
+ *
+**********************************************************************/
 void common_print_event( thread_event_t *ev )
 {
     if( ev == NULL ) {

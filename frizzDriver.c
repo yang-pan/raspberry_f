@@ -26,9 +26,15 @@
 
 static fifo_queue_t fifo_q;
 
-/**
- * Print packet recevied success
- */
+/*!********************************************************************
+ *@brief      Print packet received from frizz
+ *@par        Inner functions
+ *
+ *@param      packet    pointer to the packet
+ *
+ *@retval     void
+ *
+**********************************************************************/
 static void print_packet( frizz_packet_t *packet )
 {
     unsigned char *p;
@@ -42,9 +48,15 @@ static void print_packet( frizz_packet_t *packet )
     printf( "\n" );
 }
 
-/**
- * Print packet recevied success
- */
+/*!********************************************************************
+ *@brief      Print sensor data received from frizz
+ *@par        Inner functions
+ *
+ *@param      packet    pointer to the packet
+ *
+ *@retval     void
+ *
+**********************************************************************/
 static void print_sensor_data( frizz_packet_t *packet )
 {
     unsigned char *p;
@@ -66,9 +78,18 @@ static void print_sensor_data( frizz_packet_t *packet )
     printf( "\n" );
 }
 
-/**
- * read cnr rigister
- */
+/*!********************************************************************
+ *@brief      Return the size of data stored in fifo_q buffer.
+ *             if there is no data in fifo_q,then,return the 
+ *             value of fifo_cnr register
+ *@par        Inner functions
+ *
+ *@param      void
+ *
+ *@retval     cnr				size of data in fifo_q or the value of fifo_cnr register
+ *@retval     D_RESULT_ERROR		err
+ *
+**********************************************************************/
 static int frizz_get_cnr( void )
 {
     unsigned int cnr;
@@ -84,16 +105,23 @@ static int frizz_get_cnr( void )
     ret = serial_read_reg_32( D_FRIZZ_REG_ADDR_FIFO_CNR, &cnr );
     if( ret != D_RESULT_SUCCESS ) {
         DBG_ERR( "read cnr failed\n" );
-        return -1;
+        return D_RESULT_ERROR;
     }
     cnr = 0xFFFF & ( cnr >> 16 );
 
     return cnr;
 }
 
-/**
- * read one word from fifo
- */
+/*!********************************************************************
+ *@brief      Read one word from fifo_q buffer
+ *@par        Inner functions
+ *
+ *@param      read_buff    pointer to the area to store data
+ *
+ *@retval     D_RESULT_SUCCESS			read successfully
+ *@retval     D_RESULT_ERROR				read failed
+ *
+**********************************************************************/
 static int frizz_get_fifo( unsigned int *read_buff )
 {
     int cnr;
@@ -125,9 +153,18 @@ static int frizz_get_fifo( unsigned int *read_buff )
     return D_RESULT_SUCCESS;
 }
 
-/**
- * write data to ram_data continuously
- */
+/*!********************************************************************
+ *@brief      Write data to ram of frizz continuously
+ *@par        Inner functions
+ *
+ *@param      ram_addr		target address of ram
+ *@param      write_data		pointer to the source data to be written
+ *@param      size			size of data to be written
+ *
+ *@retval     D_RESULT_SUCCESS			write successfully
+ *@retval     D_RESULT_ERROR				write failed
+ *
+**********************************************************************/
 static int frizz_write_ram( unsigned int ram_addr, unsigned char *write_data, unsigned int size )
 {
     unsigned int write_size;
@@ -156,9 +193,17 @@ static int frizz_write_ram( unsigned int ram_addr, unsigned char *write_data, un
     return D_RESULT_SUCCESS;
 }
 
-/**
- * read data from ram_data continuously
- */
+/*!********************************************************************
+ *@brief      Read data from ram of frizz continuously
+ *@par        Inner functions
+ *
+ *@param      ram_addr		target address of ram
+ *@param      read_buff		pointer to the area to store data
+ *@param      size			size of data to read
+ *
+ *@retval     D_RESULT_SUCCESS			read successfully
+ *
+**********************************************************************/
 static int frizz_read_ram( unsigned int ram_addr, unsigned char *read_buff, unsigned int size )
 {
     unsigned int read_size;
@@ -182,12 +227,18 @@ static int frizz_read_ram( unsigned int ram_addr, unsigned char *read_buff, unsi
     return D_RESULT_SUCCESS;
 }
 
-/**
- * polling packet ( frizz->raspberry )
- * timeout_ms:  time out value
- * sensor_id:   specify polling target ( HUB_MAG / sensor )
- * target_type: specify poliing packet type ( ACK / NACK / RESPONSE )
- */
+/*!********************************************************************
+ *@brief      Polling specified packet from frizz to raspberry with timeout limitation
+ *@par        Inner functions
+ *
+ *@param      timeout_ms		timeout limitation ( msec )
+ *@param      sensor_id		specify sensor ID( HUB_MGR/sensor )
+ *@param      packet_type		specify type of packet( RES/ACK/NACK )
+ *
+ *@retval     D_RESULT_SUCCESS			get packet successfully
+ *@retval     D_RESULT_ERROR				get packet failed
+ *
+**********************************************************************/
 static int polling_command_packet( int timeout_ms, int sensor_id, int packet_type )
 {
     int tmp, ret;
@@ -227,10 +278,16 @@ static int polling_command_packet( int timeout_ms, int sensor_id, int packet_typ
     return D_RESULT_ERROR;
 }
 
-/**
- * send command to frizz
- * include ack package processing(ignore Response package)
- */
+/*!********************************************************************
+ *@brief      Send packet to frizz(with ack processing)
+ *@par        Inner functions
+ *
+ *@param      packet		pointer to the packet to be sent
+ *
+ *@retval     D_RESULT_SUCCESS			send successfully
+ *@retval     D_RESULT_ERROR				send failed
+ *
+**********************************************************************/
 static int send_packet( const frizz_packet_t *packet )
 {
     int ret, i;
@@ -243,7 +300,7 @@ static int send_packet( const frizz_packet_t *packet )
     }
 
     // Waiting for ack from frizz. Timeout is 1000ms.
-    if( polling_command_packet( 1000, packet->header.sen_id, 0x82 ) != D_RESULT_SUCCESS ) {
+    if( polling_command_packet( 1000, packet->header.sen_id, D_PACKET_TYPE_ACK ) != D_RESULT_SUCCESS ) {
         DBG_ERR( "Can't receive ACK\n" );
         return D_RESULT_ERROR;
     }
@@ -258,7 +315,7 @@ static int send_packet( const frizz_packet_t *packet )
             return D_RESULT_ERROR;
         }
         // Waiting for ack from frizz. Timeout is 1000ms.
-        if( polling_command_packet( 1000, packet->header.sen_id, 0x82 ) != D_RESULT_SUCCESS ) {
+        if( polling_command_packet( 1000, packet->header.sen_id, D_PACKET_TYPE_ACK ) != D_RESULT_SUCCESS ) {
             DBG_ERR( "Can't receive ACK\n" );
             return D_RESULT_ERROR;
         }
@@ -266,9 +323,16 @@ static int send_packet( const frizz_packet_t *packet )
     return D_RESULT_SUCCESS;
 }
 
-/**
- *  Firmware download processing and booting up
- */
+/*!********************************************************************
+ *@brief      Firmware download processing and booting up
+ *@par        Inner functions
+ *
+ *@param      frizz_fp		path of frizz firmware
+ *
+ *@retval     D_RESULT_SUCCESS			successfully boot 
+ *@retval     D_RESULT_ERROR				boot failed
+ *
+**********************************************************************/
 static int frizz_fw_download( int frizz_fp )
 {
     int ret;
@@ -381,11 +445,16 @@ static int frizz_fw_download( int frizz_fp )
     return D_RESULT_SUCCESS;
 }
 
-//*************** for LSI ***************
-
-/**
- * Set frizz STALL
- */
+/*!********************************************************************
+ *@brief      Stall DSP core on frizz
+ *@par        External public functions
+ *
+ *@param      void
+ *
+ *@retval     D_RESULT_SUCCESS			stall successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
 int frizzdrv_stall_frizz( void )
 {
     int ret;
@@ -400,9 +469,16 @@ int frizzdrv_stall_frizz( void )
     return D_RESULT_SUCCESS;
 }
 
-/**
- * Set frizz RUN
- */
+/*!********************************************************************
+ *@brief      Run DSP core on frizz
+ *@par        External public functions
+ *
+ *@param      void
+ *
+ *@retval     D_RESULT_SUCCESS			run successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
 int frizzdrv_run_frizz( void )
 {
     int ret;
@@ -417,9 +493,16 @@ int frizzdrv_run_frizz( void )
     return D_RESULT_SUCCESS;
 }
 
-/**
- * Set frizz RESET
- */
+/*!********************************************************************
+ *@brief      Reset DSP core on frizz
+ *@par        External public functions
+ *
+ *@param      void
+ *
+ *@retval     D_RESULT_SUCCESS			reset successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
 int frizzdrv_reset_frizz( void )
 {
     int ret;
@@ -434,27 +517,39 @@ int frizzdrv_reset_frizz( void )
     return D_RESULT_SUCCESS;
 }
 
-/**
- * Get frizz version number from register
- */
-int frizzdrv_get_ver_reg( void )
+/*!********************************************************************
+ *@brief      Read version register on frizz
+ *@par        External public functions
+ *
+ *@param      version		pointer to the area to store version value
+ *
+ *@retval     D_RESULT_SUCCESS			read successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
+int frizzdrv_get_ver_reg( unsigned int*version )
 {
     int ret;
-    unsigned int read_data;
 
-    read_data = 0;
-    ret = serial_read_reg_32( D_FRIZZ_REG_ADDR_VER, &read_data );
+    ret = serial_read_reg_32( D_FRIZZ_REG_ADDR_VER, version );
     if( ret != D_RESULT_SUCCESS ) {
         DBG_ERR( "read ver register failed\n" );
         return D_RESULT_ERROR;
     }
     
-    return read_data;
+    return ret;
 }
 
-/**
- * Download firmware to frizz
- */
+/*!********************************************************************
+ *@brief      Download frizz firmware to frizz RAM
+ *@par        External public functions
+ *
+ *@param      firmware_path		file path to the frizz firmware bin file
+ *
+ *@retval     D_RESULT_SUCCESS			download successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
 int frizzdrv_frizz_fw_download( const char * firmware_path )
 {
     int fp;
@@ -503,14 +598,19 @@ int frizzdrv_frizz_fw_download( const char * firmware_path )
     return D_RESULT_SUCCESS;
 }
 
-//*************** for HUB_MGR ***************
-
-/**
- * Get packet from frizz
- */
+/*!********************************************************************
+ *@brief      Parsing fifo_q buffer to get packet comes from frizz
+ *@par        External public functions
+ *
+ *@param      packet		pointer to the area to store data
+ *
+ *@retval     D_RESULT_SUCCESS			get packet successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
+//#define D_PRINT_RECEIVE_PACKET
 int frizzdrv_receive_packet( frizz_packet_t *packet )
 {
-    //#define D_PRINT_RECEIVE_PACKET
     unsigned int rcv;
     int i;
     // Receive header of packet
@@ -535,9 +635,16 @@ int frizzdrv_receive_packet( frizz_packet_t *packet )
     return D_RESULT_SUCCESS;
 }
 
-/**
- * Send packet to frizz
- */
+/*!********************************************************************
+ *@brief      Send packet to frizz(with ack and response processing)
+ *@par        External public functions
+ *
+ *@param      packet		pointer to the packet data 
+ *
+ *@retval     D_RESULT_SUCCESS			send packet successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
 int frizzdrv_send_frizz_packet( frizz_packet_t * packet )
 {
     // Send Packet
@@ -550,10 +657,23 @@ int frizzdrv_send_frizz_packet( frizz_packet_t * packet )
     return polling_command_packet(1000, packet->header.sen_id, D_PACKET_TYPE_RES);
 }
 
-/**
- * Activate/deactivate sensor
- */
-int frizzdrv_set_sensor_active( libsensors_id_e sen_id, int enabled, int use_fifo, int use_int )
+/*!********************************************************************
+ *@brief      Activate or deactivate specified sensor with specified settings
+ *@par        External public functions
+ *
+ *@param      sen_id		sensor ID to activate or deactivate
+ *@param      enabled		0:deactivate
+ *                     		1:activate
+ *@param      use_fifo	0:not use FIFO to store sensor data
+ *                     		1:use FIFO to stre sensor data
+ *@param      use_int		0:no interrupt to notify data ready
+ *                     		1:use interrupt to notify data ready
+ *
+ *@retval     D_RESULT_SUCCESS			activate/deactivate successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
+int frizzdrv_activate_sensor( libsensors_id_e sen_id, int enabled, int use_fifo, int use_int )
 {
     frizz_packet_t packet;
 
@@ -570,11 +690,18 @@ int frizzdrv_set_sensor_active( libsensors_id_e sen_id, int enabled, int use_fif
     return frizzdrv_send_frizz_packet(&packet);
 }
 
-/**
- * Set sensor data's update time interval
- */
-
-int frizzdrv_set_sensor_interval( libsensors_id_e sen_id, int interval )
+/*!********************************************************************
+ *@brief      Set interval time to update sensor data
+ *@par        External public functions
+ *
+ *@param      sen_id		sensor ID to set
+ *@param      tick		sampling interval ( msec )
+ *
+ *@retval     D_RESULT_SUCCESS			set successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
+int frizzdrv_set_sensor_interval( libsensors_id_e sen_id, int tick )
 {
     frizz_packet_t packet;
 
@@ -584,14 +711,24 @@ int frizzdrv_set_sensor_interval( libsensors_id_e sen_id, int interval )
     packet.header.type = 0x81;
     packet.header.prefix = 0xFF;
     packet.data[0] = HUB_MGR_GEN_CMD_CODE( HUB_MGR_CMD_SET_SENSOR_INTERVAL, sen_id, 0, 0 );
-    packet.data[1] = interval;
+    packet.data[1] = tick;
 
     return frizzdrv_send_frizz_packet(&packet);
 }
 
-/**
- * Activate the GPIO IRQ function of frizz (IRQ: frizz -> raspberry)
- */
+/*!********************************************************************
+ *@brief      Set GPIO interrupt setting
+ *@par        External public functions
+ *
+ *@param      gpio_num		the number of GPIO pin to use for interrupt
+ *                      		If less than 0,disable GPIO use for interrupt
+ *@param      gpio_level		0:Low( Rising edge/high active )
+ *                       		1:High( Falling edge/low active )
+ *
+ *@retval     D_RESULT_SUCCESS			set successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
 int frizzdrv_set_setting( int gpio_num, unsigned int gpio_level )
 {
     frizz_packet_t packet;
@@ -613,41 +750,56 @@ int frizzdrv_set_setting( int gpio_num, unsigned int gpio_level )
     return frizzdrv_send_frizz_packet(&packet);
 }
 
-//*************** for sensor Library ***************
-
-/**
- * Send command to sensor
- */
-int frizzdrv_send_sensor_command( libsensors_id_e sen_id, int command, int parm_length, void *parm)
+/*!********************************************************************
+ *@brief      Send command to specified sensor or HUB_MGR
+ *@par        External public functions
+ *
+ *@param      sen_id			sensor ID to send
+ *@param      command			command code to send
+ *@param      param_length	size of command parameter
+ *@param      param			pointer to the command parameter area
+ *
+ *@retval     D_RESULT_SUCCESS			send successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
+int frizzdrv_send_sensor_command( libsensors_id_e sen_id, int command, int param_length, void *param)
 {
     frizz_packet_t packet;
     int cnt;
-    int *p = ( int* )parm;
+    int *p = ( int* )param;
 
     DBG_PRINT( "sen_id:0x%02x, parm_length:%d, parm_lenth:%d\n",
-               sen_id, command, parm_length );
+               sen_id, command, param_length );
 
-    if( parm_length > FRIZZ_PACKET_DATA_MAX ) {
-        DBG_ERR( "parm_length must less than %d\n",parm_length );
+    if( param_length > FRIZZ_PACKET_DATA_MAX ) {
+        DBG_ERR( "parm_length must less than %d\n",param_length );
         return D_RESULT_ERROR;
     }
 
     // Make packet
-    packet.header.num = parm_length;
+    packet.header.num = param_length;
     packet.header.sen_id = sen_id;
     packet.header.type = 0x81;
     packet.header.prefix = 0xFF;
     packet.data[0] = HUB_MGR_GEN_CMD_CODE( command, sen_id, 0, 0 );
-    for( cnt = 1 ; cnt < parm_length; cnt ++ ) {
+    for( cnt = 1 ; cnt < param_length; cnt ++ ) {
         packet.data[cnt] = p[cnt-1];
     }
     
     return frizzdrv_send_frizz_packet(&packet);
 }
 
-/**
- * Get data packet from frizz
- */
+/*!********************************************************************
+ *@brief      Polling fifo_q buffer to get sensor data
+ *@par        External public functions
+ *
+ *@param      void
+ *
+ *@retval     D_RESULT_SUCCESS			get sensor data successfully
+ *@retval     D_RESULT_ERROR				error
+ *
+**********************************************************************/
 int frizzdrv_polling_data( void )
 {
     int ret;

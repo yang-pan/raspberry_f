@@ -11,39 +11,83 @@
 #ifndef __SERIAL_H__
 #define __SERIAL_H__
 
-/**
- * serial communication of initialize processing
+/*!********************************************************************
+ *@brief      Open serial devcie
+ *@par        External public functions
  *
- * @param[in] path of character device
- * @return 0=success, otherwise 0 =fail
- */
+ *@param      serial_dev_path		path of serial device
+ *
+ *@retval     D_RESULT_SUCCESS		open successfully
+ *@retval     D_RESULT_ERROR			open failed
+ *
+**********************************************************************/
 int serial_open( const char* serial_dev_path );
 
-/**
- * serial communication of termination processing
- */
+/*!********************************************************************
+ *@brief      Close serial devcie
+ *@par        External public functions
+ *
+ *@param      void
+ *
+ *@retval     void
+ *
+**********************************************************************/
 void serial_close( void );
 
-/**
- * Write data(4bytes) to register
- */
-int serial_write_reg_32( unsigned int, unsigned int );
+/*!********************************************************************
+ *@brief      write register
+ *@par        External public functions
+ *
+ *@param      reg_addr	register address
+ *@param      data		pointer to the area of source data
+ *
+ *@retval     D_RESULT_SUCCESS		write successfully
+ *@retval     D_RESULT_ERROR			write failed
+ *
+**********************************************************************/
+int serial_write_reg_32( unsigned int reg_addr, unsigned int data );
 
-/**
- * Read data(4bytes) from register
- */
-int serial_read_reg_32( unsigned int, unsigned int* );
+/*!********************************************************************
+ *@brief      Read register
+ *@par        External public functions
+ *
+ *@param      reg_addr	register address
+ *@param      data		pointer to the area to store data
+ *
+ *@retval     D_RESULT_SUCCESS	read successfully
+  @retval     D_RESULT_ERROR		read failed
+ *
+**********************************************************************/
+int serial_read_reg_32( unsigned int reg_addr, unsigned int *data );
 
-/**
- * Write data to register continuously
- * data size should be an integer multiple of 4 bytes
- */
+/*!********************************************************************
+ *@brief      write register continuously
+ *             data size should be an integer multiple of 4 bytes
+ *@par        External public functions
+ *
+ *@param      reg_addr		register address
+ *@param      write_buff		pointer to the area of source data
+ *@param      write_size		data size to write
+ *
+ *@retval     D_RESULT_SUCCESS	write successfully
+  @retval     D_RESULT_ERROR		write failed
+ *
+**********************************************************************/
 int serial_write_burst( unsigned int reg_addr, unsigned char *write_buff, int write_size );
 
-/**
- * Read data from register continuously
- * data size should be and integer multiple of 4 bytes
- */
+/*!********************************************************************
+ *@brief      read register continuously
+ *             data size should be and integer multiple of 4 bytes
+ *@par        External public functions
+ *
+ *@param      reg_addr		register address
+ *@param      read_buff		pointer to the area to store data
+ *@param      read_size		data size to read
+ *
+ *@retval     D_RESULT_SUCCESS	read successfully
+  @retval     D_RESULT_ERROR		read failed
+ *
+**********************************************************************/
 int serial_read_burst( unsigned int reg_addr, unsigned char *read_buff, int read_size );
 
 #endif // __SERIAL_H__
